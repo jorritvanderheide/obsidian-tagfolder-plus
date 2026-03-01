@@ -1,8 +1,7 @@
 <script lang="ts">
     import V2TreeFolderComponent from "./V2TreeFolderComponent.svelte";
-    //TODO Add Comments for details    
+    //TODO Add Comments for details
     import {
-        type TREE_TYPE,
         type TagFolderSettings,
         type ViewItem,
     } from "types";
@@ -21,8 +20,6 @@
         ancestorToTags,
         isSpecialTag,
         unique,
-        getViewItemFromPath,
-        getAllLinksRecursive,
         _isSameViewItem,
         scheduleOnceIfDuplicated,
         isSameAny,
@@ -39,10 +36,10 @@
     import TreeItemItemComponent from "V2TreeItemComponent.svelte";
     import OnDemandRender from "OnDemandRender.svelte";
     import { getContext } from "svelte";
+    import { setIcon } from "obsidian";
 
     interface Props {
         // -- Props --
-        viewType?: TREE_TYPE;
         // Name of this tag, including intermediate levels if we are inside.
         thisName?: string;
         // **Be careful**: Please keep the order of this. This should be already sorted.
@@ -61,8 +58,8 @@
         depth?: number;
         // Icons (Just for layout)
         folderIcon?: string;
-        // The title (Only used at the root)
-        headerTitle?: string;
+        folderOpenIcon?: string;
+        fileIcon?: string;
         // -- Callbacks --
         showMenu: (
             evt: MouseEvent,
@@ -81,7 +78,6 @@
     }
 
     let {
-        viewType = "tags",
         thisName = "",
         items = [] as ViewItem[],
         tagName = $bindable(""),
@@ -91,7 +87,8 @@
         isMainTree,
         depth = 1,
         folderIcon = "",
-        headerTitle = "",
+        folderOpenIcon = "",
+        fileIcon = "",
         showMenu,
         openFile,
         hoverPreview,
@@ -100,9 +97,8 @@
 
     // Watch them to realise the configurations to display immediately
     let _setting = $derived($tagFolderSetting as TagFolderSettings);
-     const expandLimit = $derived(
-        !_setting.expandLimit ?0:
-        viewType == "links" ? _setting.expandLimit + 1 : _setting.expandLimit,
+    const expandLimit = $derived(
+        !_setting.expandLimit ? 0 : _setting.expandLimit,
     );
 
     const _tagInfo = $derived($tagInfo);
@@ -116,16 +112,12 @@
         trails: string[],
         filePaths: string[],
     ) {
-        if (viewType == "tags") {
-            openScrollView(
-                undefined,
-                "",
-                joinPartialPath(removeIntermediatePath(trails)).join(", "),
-                filePaths,
-            );
-        } else if (viewType == "links") {
-            openScrollView(undefined, "", `Linked to ${filename}`, filePaths);
-        }
+        openScrollView(
+            undefined,
+            "",
+            joinPartialPath(removeIntermediatePath(trails)).join(", "),
+            filePaths,
+        );
         e.preventDefault();
     }
     function shouldResponsibleFor(evt: MouseEvent) {
@@ -184,11 +176,6 @@
     // Current tag name for display.
     // let tagsDisp = $state([] as string[][]);
 
-    // let thisLinks = $state([] as string[]);
-
-    // Items which should be used in LinkFolder.
-    // let linkedItems = new Map<string, ViewItem[]>();
-
     // --> Dirty area
     // Collect sub-folders.
     let isUpdating = $state(false);
@@ -243,21 +230,8 @@
         return ret;
     }
 
-    function dragStartFiles(args: DragEvent) {
-        if (!draggable) return;
-        const files = _items.map((e) =>
-            app.vault.getAbstractFileByPath(e.path),
-        );
-        const param = dm.dragFiles(args, files);
-        if (param) {
-            return dm.onDragStart(args, param);
-        }
-    }
     function dragStartName(args: DragEvent) {
         if (!draggable) return;
-        if (viewType == "links") {
-            return dragStartFile(args);
-        }
         const expandedTagsAll = [
             ...ancestorToLongestTag(
                 ancestorToTags(
@@ -285,32 +259,9 @@
 
         dm.onDragStart(args, args);
     }
-    function dragStartFile(args: DragEvent) {
-        if (!draggable) return;
-        const file = app.vault.getAbstractFileByPath(filename);
-        const param = dm.dragFile(args, file);
-        if (param) {
-            return dm.onDragStart(args, param);
-        }
-    }
-    function handleOpenItem(evt: MouseEvent) {
-        if (viewType == "tags") return;
-        evt.preventDefault();
-        evt.stopPropagation();
-        openFile(filename, evt.metaKey || evt.ctrlKey);
-    }
 
 
     // --> Self information
-    const filename = $derived(
-        viewType == "tags" ? "" : thisName.substring(thisName.indexOf(":") + 1),
-    );
-    const thisInfo: ViewItem | undefined = $derived(
-        viewType != "links" ? undefined : getViewItemFromPath(thisName),
-    );
-    const thisLinks: string[] = $derived(
-        viewType != "links" ? [] : (thisInfo?.links ?? []).map((e) => `${e}`),
-    );
     const thisNameLC = $derived(thisName.toLowerCase());
     const tagNameLC = $derived(tagName.toLowerCase());
     // <-- Self information
@@ -340,7 +291,7 @@
 
     // <-- Where were this tag shown?
 
-    // --> 
+    // -->
 
     // Cached items
     const _items = $derived(items);
@@ -363,23 +314,6 @@
 
     const displayTagCandidates = $derived.by(() => {
         let tagsAll = [] as string[];
-        if (viewType == "links") {
-            if (!isRoot) {
-                if (!_setting.linkShowOnlyFDR) {
-                    tagsAll = thisInfo
-                        ? getAllLinksRecursive(thisInfo, [...trail])
-                        : [...thisLinks];
-                }else{
-                    tagsAll = [...thisLinks];
-                }
-            }else{
-                tagsAll = unique(_items.flatMap((e) => e.links));
-            }
-            if (!isRoot || _setting.expandUntaggedToRoot) {
-                tagsAll = tagsAll.filter((e) => e != "_unlinked");
-            }
-            tagsAll = tagsAll.filter((e) => !trail.contains(e));
-        } else {
             tagsAll = uniqueCaseIntensive(_items.flatMap((e) => e.tags));
             if (!isRoot || _setting.expandUntaggedToRoot) {
                 tagsAll = tagsAll.filter((e) => e != "_untagged");
@@ -395,11 +329,10 @@
                     });
                 }
             }
-        }
         return tagsAll;
     });
     const tagsExceptAlreadyShown = $derived(
-        viewType!="tags"?[]:displayTagCandidates.filter((tag) =>
+        displayTagCandidates.filter((tag) =>
             trail.every(
                 (trail) =>
                     trimTrailingSlash(tag.toLowerCase()) !==
@@ -446,7 +379,7 @@
         let isSuppressibleLevel = false;
         let existTags = tagsPhaseX1;
         let existTagsFiltered1 = [] as string[];
-        if (!_setting.doNotSimplifyTags && viewType!="links") {
+        if (!_setting.doNotSimplifyTags) {
             // If the note has only one item. it can be suppressible.
             if (_items.length == 1) {
                 existTagsFiltered1 = existTags;
@@ -472,32 +405,27 @@
                 // If reduceNestedParent is enabled, passed trails also should be trimmed.
                 removeItems.push(...trailLower);
             }
-            let tagsOnNextLevel = [] as string[];
-            if (viewType == "tags") {
-                tagsOnNextLevel = uniqueCaseIntensive(
-                    existTags.map((e) => {
-                        const idx = e.indexOf("/");
-                        if (idx < 1) return e;
-                        let piece = e.substring(0, idx + 1);
-                        let idx2 = idx;
-                        while (
-                            removeItems.some((e) =>
-                                e.startsWith(piece.toLowerCase()),
-                            )
-                        ) {
-                            idx2 = e.indexOf("/", idx2 + 1);
-                            if (idx2 === -1) {
-                                piece = e;
-                                break;
-                            }
-                            piece = e.substring(0, idx2 + 1);
+            const tagsOnNextLevel = uniqueCaseIntensive(
+                existTags.map((e) => {
+                    const idx = e.indexOf("/");
+                    if (idx < 1) return e;
+                    let piece = e.substring(0, idx + 1);
+                    let idx2 = idx;
+                    while (
+                        removeItems.some((e) =>
+                            e.startsWith(piece.toLowerCase()),
+                        )
+                    ) {
+                        idx2 = e.indexOf("/", idx2 + 1);
+                        if (idx2 === -1) {
+                            piece = e;
+                            break;
                         }
-                        return piece;
-                    }),
-                );
-            } else {
-                tagsOnNextLevel = unique(existTags);
-            }
+                        piece = e.substring(0, idx2 + 1);
+                    }
+                    return piece;
+                }),
+            );
             const trailShortest = removeIntermediatePath(trail);
             existTagsFiltered1 = tagsOnNextLevel.filter((tag) =>
                 // Remove tags which in trail again.
@@ -544,11 +472,6 @@
             return { tags, leftOverItemsSrc };
         }
 
-        if (viewType == "links") {
-            const ret = tagsOfLinkedItems;
-            return { tags: ret.tags, leftOverItemsSrc: ret.leftOverItems };;
-        }
-
         if (previousTrail.endsWith("/")) {
             const existTagsFiltered4 = [] as string[];
             for (const tag of filteredTags) {
@@ -569,56 +492,6 @@
         return { tags, leftOverItemsSrc };
     });
 
-    const linkedItems = $derived.by(() => {
-        const ret = new Map<string, ViewItem[]>();
-        if (viewType == "tags") return ret;
-        for (const tag of displayTagCandidates) {
-            if (tag == "_unlinked") {
-                ret.set(
-                    tag,
-                    _items.filter((e) => e.links.contains(tag)),
-                );
-            } else {
-                const wItems = _items.filter((e) => e.path == tag);
-                ret.set(tag, wItems);
-            }
-        }
-        return ret;
-    });
-    const tagsOfLinkedItems = $derived.by(() => {
-        let leftOverItems = [] as ViewItem[];
-        let tags = [] as string[];
-        if (viewType == "tags") return { tags, leftOverItems };
-        if (thisName == "_unlinked") {
-            leftOverItems = _items;
-        } else {
-            displayTagCandidates.forEach((tag) => {
-                if (tag == "_unlinked") {
-                    tags.push(tag);
-                    return;
-                }
-                const x = getViewItemFromPath(tag);
-                if (x == undefined) return false;
-                const existLinks = x.links.filter(
-                    (e) => !trail.contains(e) && e != thisName,
-                );
-
-                // Show as a tag,
-                // if there are two or more items under the tag,
-                // and it has not reached the expanding limit.
-                const nextDepth =
-                    !expandLimit || (expandLimit && depth + 1 < expandLimit);
-                if (existLinks.length >= 2 && nextDepth) {
-                    tags.push(tag);
-                } else {
-                    // Otherwise, show as files.
-                    leftOverItems.push(x);
-                }
-            });
-        }
-        return { tags, leftOverItems };
-    });
-
     const leftOverItemsUnsorted = $derived.by(() => {
         if (_setting.useMultiPaneList && isMainTree) return [] as ViewItem[];
         if (isRoot && isMainTree && !isSuppressibleLevel) {
@@ -626,8 +499,7 @@
             if (_setting.expandUntaggedToRoot) {
                 return _items.filter(
                     (e) =>
-                        e.tags.contains("_untagged") ||
-                        e.tags.contains("_unlinked"),
+                        e.tags.contains("_untagged"),
                 );
             } else {
                 return [] as ViewItem[];
@@ -637,27 +509,22 @@
             // Separated List;
             return _items;
         }
-        if (viewType == "tags") {
-            if (_setting.hideItems == "NONE") {
-                return _items;
-            } else if (
-                (_setting.hideItems == "DEDICATED_INTERMIDIATES" && isInDedicatedTag) ||
-                _setting.hideItems == "ALL_EXCEPT_BOTTOM"
-            ) {
-                return _items.filter(
-                    (e) =>
-                        !children
-                            .map((e) => e[V2FI_IDX_CHILDREN])
-                            .flat()
-                            .find((ee) => e.path == ee.path),
-                );
-            } else {
-                return _items;
-            }
+        if (_setting.hideItems == "NONE") {
+            return _items;
+        } else if (
+            (_setting.hideItems == "DEDICATED_INTERMIDIATES" && isInDedicatedTag) ||
+            _setting.hideItems == "ALL_EXCEPT_BOTTOM"
+        ) {
+            return _items.filter(
+                (e) =>
+                    !children
+                        .map((e) => e[V2FI_IDX_CHILDREN])
+                        .flat()
+                        .find((ee) => e.path == ee.path),
+            );
         } else {
-            return leftOverItemsSrc;
+            return _items;
         }
-        // return [];
     });
 
     const leftOverItems = $derived(
@@ -672,13 +539,7 @@
     // -- Displaying
 
     let isActive = $derived(
-        (_items && _items.some((e) => e.path == _currentActiveFilePath)) ||
-            (viewType == "links" &&
-                (thisName == _currentActiveFilePath ||
-                    tags.contains(_currentActiveFilePath) ||
-                    leftOverItems.some(
-                        (e) => e.path == _currentActiveFilePath,
-                    ))),
+        _items && _items.some((e) => e.path == _currentActiveFilePath),
     );
 
     const tagsDisp = $derived(
@@ -701,13 +562,12 @@
               : [tagNameDisp],
     );
 
-    const classKey = $derived(viewType == "links" ? " tf-link" : " tf-tag");
     const tagsDispHtml = $derived(
         isFolderVisible
             ? tagsDisp
                   .map(
                       (e) =>
-                          `<span class="tagfolder-tag tag-tag${classKey}">${e
+                          `<span class="tagfolder-tag tag-tag tf-tag">${e
                               .map(
                                   (ee) =>
                                       `<span class="tf-tag-each">${escapeStringToHTML(
@@ -719,16 +579,20 @@
                   .join("")
             : "",
     );
-    const itemCount = $derived(
-        viewType == "tags"
-            ? (_items?.length ?? 0)
-            : tags.length + leftOverItems.length,
-    );
-
     const leftOverItemsDisp = $derived(splitArrayToBatch(leftOverItems));
     const childrenDisp = $derived(splitArrayToBatch(children));
 
-    
+
+    // -- Folder mark icon ---
+    function folderMarkAction(el: HTMLElement, mark: string) {
+        setIcon(el, mark);
+        return {
+            update(newMark: string) {
+                el.innerHTML = "";
+                setIcon(el, newMark);
+            },
+        };
+    }
 
     // -- Dragging ---
     const draggable = $derived(!_setting.disableDragging);
@@ -739,7 +603,7 @@
 
     $effect(() => {
         const key = trailKey + (isRoot ? "-r" : "-x") + viewContextID;
-        const sortFunc = selectCompareMethodTags(_setting, viewType == "links" ? {} : _tagInfo);
+        const sortFunc = selectCompareMethodTags(_setting, _tagInfo);
         const param = {
             key,
             expandLimit,
@@ -749,11 +613,9 @@
             _setting,
             isMainTree,
             isSuppressibleLevel,
-            viewType,
             previousTrail,
             _tagInfo,
             _items,
-            linkedItems,
             isRoot,
             isFolderVisible,
             sortFunc,
@@ -775,21 +637,13 @@
             showMenu(
                 evt,
                 [...trail, ...suppressLevels],
-                viewType == "tags" ? tagName : filename,
+                tagName,
                 _items,
             );
         }
     }}
 >
-    {#if isRoot || !isMainTree}
-        {#if isRoot}
-            <div class="tree-item-self nav-folder-title">
-                <div class="tree-item-inner nav-folder-title-content">
-                    {headerTitle}
-                </div>
-            </div>
-        {/if}
-    {:else}
+    {#if !isRoot && isMainTree}
         <OnDemandRender
             cssClass={`tree-item-self${
                 !isRoot ? " is-clickable mod-collapsible" : ""
@@ -798,19 +652,23 @@
         >
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
-                class="tree-item-icon collapse-icon nav-folder-collapse-indicator"
-                class:is-collapsed={collapsed}
+                class="tree-item-icon nav-folder-icon"
                 onclick={toggleFolder}
             >
                 {#if isFolderVisible}
-                    {@html folderIcon}
+                    {#if _tagInfo[tagName]?.mark}
+                        <div use:folderMarkAction={_tagInfo[tagName].mark} class="tagfolder-folder-mark"></div>
+                    {:else if collapsed}
+                        {@html folderIcon}
+                    {:else}
+                        {@html folderOpenIcon}
+                    {/if}
                 {:else}
                     <svg class="svg-icon" />
                 {/if}
             </div>
             <div
                 class="tree-item-inner nav-folder-title-content lsl-f"
-                onclick={handleOpenItem}
             >
                 {#if isFolderVisible}
                     <div
@@ -823,21 +681,6 @@
                 {:else}
                     <div class="tagfolder-titletagname">...</div>
                 {/if}
-                <div
-                    class="tagfolder-quantity itemscount"
-                    onclick={(e) =>
-                        handleOpenScroll(
-                            e,
-                            trail,
-                            _items.map((e) => e.path),
-                        )}
-                >
-                    <span
-                        class="itemscount"
-                        {draggable}
-                        ondragstart={dragStartFiles}>{itemCount}</span
-                    >
-                </div>
             </div>
         </OnDemandRender>
     {/if}
@@ -847,11 +690,12 @@
             {#each childrenDisp as items}
                 {#each items as [f, tagName, tagNameDisp, subitems]}
                 <V2TreeFolderComponent
-                    {viewType}
                     items={subitems}
                     thisName={f}
                     trail={[...trail, ...suppressLevels, f]}
                     {folderIcon}
+                    {folderOpenIcon}
+                    {fileIcon}
                     {openFile}
                     isRoot={false}
                     {showMenu}
@@ -874,6 +718,7 @@
                             : [...trail, ...suppressLevels]}
                         {showMenu}
                         {hoverPreview}
+                        {fileIcon}
                     />
                 {/each}
             {/each}

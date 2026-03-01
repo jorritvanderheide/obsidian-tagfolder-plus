@@ -24,33 +24,18 @@
 	display: none;
 }
 
+.tagfolder-tag.tag-tag span.tf-tag-each {
+	text-transform: capitalize;
+}
+
 .tagfolder-tag.tag-tag.tf-tag span.tf-tag-each:first-child:not(:empty):before {
-	content: "#";
-	margin-left: 0.3em;
-}
-
-.tagfolder-tag.tag-tag.tf-link span.tf-tag-each:first-child:not(:empty):before {
 	content: "";
-	margin-left: 0.3em;
+	margin-left: 0;
 }
 
-.tagfolder-tag.tag-tag.tf-link.link-cross span.tf-tag-each:first-child:not(:empty):before {
-	content: "⇔ ";
-	margin-left: 0.3em;
-}
-
-.tagfolder-tag.tag-tag.tf-link.link-forward span.tf-tag-each:first-child:not(:empty):before {
-	content: "⇒ ";
-	margin-left: 0.3em;
-}
-
-.tagfolder-tag.tag-tag.tf-link.link-reverse span.tf-tag-each:first-child:not(:empty):before {
-	content: "⇐ ";
-	margin-left: 0.3em;
-}
 
 .tagfolder-tag.tag-tag span.tf-tag-each::before {
-	content: "→ ";
+	content: "";
 	margin-left: 0;
 	margin-right: 0;
 }
@@ -129,6 +114,46 @@
 
 .tag-folder-title {
 	max-width: 100%;
+}
+
+.tagfolder-folder-mark {
+	width: var(--icon-size);
+	height: var(--icon-size);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* Icon picker modal */
+.tagfolder-icon-picker .tagfolder-icon-search {
+	width: 100%;
+	margin-bottom: 8px;
+}
+
+.tagfolder-icon-picker .tagfolder-icon-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+	gap: 2px;
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.tagfolder-icon-picker .tagfolder-icon-btn {
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border-radius: 4px;
+	background: transparent;
+	border: none;
+	color: var(--text-normal);
+}
+
+.tagfolder-icon-picker .tagfolder-icon-btn:hover {
+	background: var(--background-modifier-hover);
 }
 
 .tree-item.nav-folder.updating {

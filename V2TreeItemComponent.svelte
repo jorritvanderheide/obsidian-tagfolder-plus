@@ -2,13 +2,6 @@
     import OnDemandRender from "OnDemandRender.svelte";
 
     import type { TREE_TYPE, TagFolderSettings, ViewItem } from "types";
-    import {
-        renderSpecialTag,
-        trimSlash,
-        escapeStringToHTML,
-        getExtraTags,
-        uniqueCaseIntensive,
-    } from "./util";
     import { currentFile, pluginInstance, tagFolderSetting } from "./store";
 
     const viewType: TREE_TYPE = "tags";
@@ -17,6 +10,7 @@
         // Display props
         item: ViewItem;
         trail: string[];
+        fileIcon?: string;
         // Callbacks
         openFile: (path: string, specialKey: boolean) => void;
         showMenu: (
@@ -31,6 +25,7 @@
     let {
         item,
         trail,
+        fileIcon = "",
         openFile,
         showMenu,
         hoverPreview
@@ -47,24 +42,7 @@
     // To highlighting
     let isActive = $derived(item.path == _currentActiveFilePath);
 
-    // Compute extra tags. (Only on visible)
     let isItemVisible = $state(false);
-    const tagsLeft = $derived(isItemVisible? uniqueCaseIntensive(
-		[
-			...getExtraTags(item.tags, [...trail], _setting.reduceNestedParent),
-			...item.extraTags]
-                    .map((e) => trimSlash(e, false, true))
-                    .map(e=>e.split("/").map(ee => renderSpecialTag(ee)).join("/"))
-                    .filter((e) => e != ""),
-            ):[]);
-    const extraTagsHtml = $derived(`${tagsLeft
-                .map(
-                    (e) =>
-                        `<span class="tf-tag">${escapeStringToHTML(
-                            e,
-                        )}</span>`,
-                )
-                .join("")}`);
 
     const draggable = $derived(!_setting.disableDragging);
     const app = $derived($pluginInstance?.app);
@@ -100,12 +78,12 @@
             }}
             oncontextmenu={(evt) => showMenu(evt, trail, undefined, [item])}
         >
+            {#if isVisible && fileIcon}
+                <div class="tree-item-icon nav-file-icon">{@html fileIcon}</div>
+            {/if}
             <div class="tree-item-inner nav-file-title-content lsl-f">
                 {isVisible ? item.displayName : ""}
             </div>
-            {#if isVisible}
-                <div class="tf-taglist">{@html extraTagsHtml}</div>
-            {/if}
         </div>
     {/snippet}
 </OnDemandRender>

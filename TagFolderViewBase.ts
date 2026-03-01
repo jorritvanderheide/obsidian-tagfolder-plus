@@ -6,7 +6,6 @@ import {
 	OrderKeyItem,
 	OrderKeyTag,
 	VIEW_TYPE_TAGFOLDER,
-	VIEW_TYPE_TAGFOLDER_LINK,
 	VIEW_TYPE_TAGFOLDER_LIST,
 	type TagFolderSettings,
 	type ViewItem
@@ -14,6 +13,7 @@ import {
 import { maxDepth, selectedTags } from "./store";
 import { ancestorToLongestTag, ancestorToTags, isSpecialTag, renderSpecialTag, joinPartialPath, removeIntermediatePath, trimTrailingSlash } from "./util";
 import { askString } from "dialog";
+import { IconPickerModal } from "./IconPickerModal";
 
 function toggleObjectProp(obj: { [key: string]: any }, propName: string, value: string | false) {
 	if (value === false) {
@@ -166,23 +166,61 @@ export abstract class TagFolderViewBase extends ItemView {
 			if (navigator && navigator.clipboard) {
 				menu.addItem((item) =>
 					item
-						.setTitle(`Copy tags:${expandedTags}`)
-						.setIcon("hashtag")
+						.setTitle(`Copy tags: ${expandedTags}`)
+						.setIcon("copy")
 						.onClick(async () => {
 							await navigator.clipboard.writeText(expandedTags);
 							new Notice("Copied");
 						})
 				);
 			}
-			menu.addItem((item) =>
-				item
-					.setTitle(`New note ${targetTag ? "in here" : "as like this"}`)
-					.setIcon("create-new")
-					.onClick(async () => {
-						await this.plugin.createNewNote(trail);
-					})
-			);
 			if (targetTag) {
+				const pinnedTag = targetTag;
+				const isPinned = this.plugin.settings.pinnedFolders.contains(pinnedTag);
+				if (isPinned) {
+					menu.addItem((item) =>
+						item.setTitle("Unpin folder")
+							.setIcon("lucide-pin")
+							.onClick(async () => {
+								this.plugin.settings.pinnedFolders = this.plugin.settings.pinnedFolders.filter(f => f !== pinnedTag);
+								await this.plugin.saveSettings();
+							})
+					);
+				} else {
+					menu.addItem((item) =>
+						item.setTitle("Pin folder")
+							.setIcon("lucide-pin")
+							.onClick(async () => {
+								this.plugin.settings.pinnedFolders = [...this.plugin.settings.pinnedFolders, pinnedTag];
+								await this.plugin.saveSettings();
+							})
+					);
+				}
+				const iconTag = targetTag;
+				const currentMark = this.plugin.tagInfo?.[iconTag]?.mark ?? "";
+				if (currentMark) {
+					menu.addItem((item) =>
+						item.setTitle("Remove folder icon")
+							.setIcon("lucide-image-off")
+							.onClick(async () => {
+								this.plugin.tagInfo[iconTag] = toggleObjectProp(this.plugin.tagInfo[iconTag] ?? {}, "mark", false);
+								this.plugin.applyTagInfo();
+								await this.plugin.saveTagInfo();
+							})
+					);
+				} else {
+					menu.addItem((item) =>
+						item.setTitle("Set folder icon")
+							.setIcon("lucide-image-plus")
+							.onClick(() => {
+								new IconPickerModal(this.app, async (iconId) => {
+									this.plugin.tagInfo[iconTag] = toggleObjectProp(this.plugin.tagInfo[iconTag] ?? {}, "mark", iconId);
+									this.plugin.applyTagInfo();
+									await this.plugin.saveTagInfo();
+								}).open();
+							})
+					);
+				}
 				if (this.plugin.settings.useTagInfo && this.plugin.tagInfo != null) {
 					const tag = targetTag;
 
@@ -295,6 +333,18 @@ export abstract class TagFolderViewBase extends ItemView {
 						await this.app.workspace.openLinkText(path, path, "split");
 					})
 			);
+			menu.addSeparator();
+			menu.addItem((item) =>
+				item
+					.setTitle("Delete")
+					.setIcon("trash")
+					.setWarning(true)
+					.onClick(async () => {
+						if (file) {
+							await this.app.vault.trash(file, true);
+						}
+					})
+			);
 		} else if (!isTagTree && targetTag) {
 			const path = targetTag;
 			const file = this.app.vault.getAbstractFileByPath(path);
@@ -344,8 +394,6 @@ export abstract class TagFolderViewBase extends ItemView {
 		const currentType = this.getViewType();
 		if (currentType == VIEW_TYPE_TAGFOLDER) {
 			viewType = VIEW_TYPE_TAGFOLDER_LIST;
-		} else if (currentType == VIEW_TYPE_TAGFOLDER_LINK) {
-			return
 		} else if (currentType == VIEW_TYPE_TAGFOLDER_LIST) {
 			viewType = VIEW_TYPE_TAGFOLDER;
 		}
