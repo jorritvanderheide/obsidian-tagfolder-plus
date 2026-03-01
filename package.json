@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-tagfolder",
+	"name": "nested-tag-folder",
 	"version": "0.18.13",
 	"description": "Show tags as folder",
 	"main": "main.js",

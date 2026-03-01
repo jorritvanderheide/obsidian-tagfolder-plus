@@ -1,9 +1,9 @@
 {
-	"id": "obsidian-tagfolder",
-	"name": "TagFolder",
+	"id": "nested-tag-folder",
+	"name": "Nested Tag Folder",
 	"version": "0.18.13",
 	"minAppVersion": "0.12.0",
-	"description": "Show tags as folder",
+	"description": "Show nested tags as a strict folder hierarchy",
 	"author": "vorotamoroz",
 	"authorUrl": "https://github.com/vrtmrz",
 	"isDesktopOnly": false
