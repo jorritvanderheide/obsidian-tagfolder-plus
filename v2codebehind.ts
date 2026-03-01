@@ -137,8 +137,16 @@ export async function collectTreeChildren(
             // -- Check redundant combination if configured.
             if (_setting.mergeRedundantCombination) {
                 const out = [] as typeof wChildren;
-                const isShown = new Set<string>();
+                // Track shown items per root namespace so that cross-namespace
+                // siblings (e.g. area/* vs source/*) are never deduplicated
+                // against each other — only tags sharing the same root prefix are merged.
+                const isShownByNamespace = new Map<string, Set<string>>();
                 for (const [tag, tagName, tagsDisp, items] of wChildren) {
+                    const namespace = tag.split("/")[0].toLowerCase().replace(/\/$/, "");
+                    if (!isShownByNamespace.has(namespace)) {
+                        isShownByNamespace.set(namespace, new Set<string>());
+                    }
+                    const isShown = isShownByNamespace.get(namespace)!;
                     const list = [] as ViewItem[];
                     for (const v of items) {
                         if (!isShown.has(v.path)) {
