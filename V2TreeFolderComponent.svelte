@@ -384,6 +384,17 @@
             if (!isRoot || _setting.expandUntaggedToRoot) {
                 tagsAll = tagsAll.filter((e) => e != "_untagged");
             }
+            // Namespace guard: inside a non-root folder, only show tags from the
+            // same root namespace (e.g., inside source/, never show area/*).
+            if (!isRoot && trail.length > 0) {
+                const rootNS = trail[0].split("/")[0].toLowerCase();
+                if (rootNS) {
+                    tagsAll = tagsAll.filter((tag) => {
+                        const lc = tag.toLowerCase();
+                        return lc === rootNS || lc.startsWith(rootNS + "/");
+                    });
+                }
+            }
         }
         return tagsAll;
     });
