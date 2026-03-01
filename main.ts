@@ -33,20 +33,16 @@ import {
 	VIEW_TYPE_TAGFOLDER,
 	VIEW_TYPE_TAGFOLDER_LIST,
 	type ViewItem,
-	VIEW_TYPE_TAGFOLDER_LINK,
 	type FileCache,
 	enumShowListIn
 } from "types";
-import { allViewItems, allViewItemsByLink, appliedFiles, currentFile, maxDepth, pluginInstance, searchString, selectedTags, tagFolderSetting, tagInfo } from "store";
+import { allViewItems, appliedFiles, currentFile, maxDepth, pluginInstance, searchString, selectedTags, tagFolderSetting, tagInfo } from "store";
 import {
 	compare,
 	doEvents,
 	fileCacheToCompare,
-	parseAllReference,
 	renderSpecialTag,
-	secondsToFreshness,
 	unique,
-	updateItemsLinkMap,
 	ancestorToLongestTag,
 	ancestorToTags,
 	joinPartialPath,
@@ -125,7 +121,6 @@ export default class TagFolderPlugin extends Plugin {
 	searchString = "";
 
 	allViewItems = [] as ViewItem[];
-	allViewItemsByLink = [] as ViewItem[];
 
 	compareItems: (a: ViewItem, b: ViewItem) => number = (_, __) => 0;
 
@@ -140,18 +135,6 @@ export default class TagFolderPlugin extends Plugin {
 		}
 		return null;
 	}
-	getLinkView(): TagFolderView | null {
-		for (const leaf of this.app.workspace.getLeavesOfType(
-			VIEW_TYPE_TAGFOLDER_LINK
-		)) {
-			const view = leaf.view;
-			if (view instanceof TagFolderView) {
-				return view;
-			}
-		}
-		return null;
-	}
-
 	// Called when item clicked in the tag folder pane.
 	readonly focusFile = (path: string, specialKey: boolean): void => {
 		if (this.currentOpeningFile == path) return;
@@ -237,10 +220,6 @@ export default class TagFolderPlugin extends Plugin {
 			(leaf) => new TagFolderView(leaf, this, "tags")
 		);
 		this.registerView(
-			VIEW_TYPE_TAGFOLDER_LINK,
-			(leaf) => new TagFolderView(leaf, this, "links")
-		);
-		this.registerView(
 			VIEW_TYPE_TAGFOLDER_LIST,
 			(leaf) => new TagFolderList(leaf, this)
 		);
@@ -254,9 +233,7 @@ export default class TagFolderPlugin extends Plugin {
 				await this.initView();
 				await this.activateView();
 			}
-			if (this.settings.useTagInfo) {
-				await this.loadTagInfo();
-			}
+			await this.loadTagInfo();
 		});
 		this.addCommand({
 			id: "tagfolder-open",
@@ -266,30 +243,10 @@ export default class TagFolderPlugin extends Plugin {
 			},
 		});
 		this.addCommand({
-			id: "tagfolder-link-open",
-			name: "Show Link Folder",
-			callback: () => {
-				void this.activateViewLink();
-			},
-		});
-		this.addCommand({
 			id: "tagfolder-rebuild-tree",
 			name: "Force Rebuild",
 			callback: () => {
 				this.refreshAllTree();
-			},
-		});
-		this.addCommand({
-			id: "tagfolder-create-similar",
-			name: "Create a new note with the same tags",
-			editorCallback: async (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
-				const file = view?.file;
-				if (!file) return;
-				const cache = this.app.metadataCache.getFileCache(file);
-				if (!cache) return;
-				const tags = getAllTags(cache) ?? [];
-				const tagsWithoutPrefix = tags.map((e) => trimPrefix(e, "#"));
-				await this.createNewNote(tagsWithoutPrefix);
 			},
 		});
 		this.metadataCacheChanged = this.metadataCacheChanged.bind(this);
@@ -494,16 +451,11 @@ export default class TagFolderPlugin extends Plugin {
 	metadataCacheChanged(file: TFile) {
 		void this.loadFileInfoAsync(file);
 	}
-	metadataCacheResolve(file: TFile) {
-		if (this.getLinkView() != null) {
-			void this.loadFileInfoAsync(file);
-		}
+	metadataCacheResolve(_file: TFile) {
+		// no-op: link tree removed
 	}
 	metadataCacheResolved() {
-		if (this.getLinkView() != null) {
-			// console.warn("MetaCache Resolved")
-			// this.loadFileInfo();
-		}
+		// no-op: link tree removed
 	}
 
 	refreshTree(file: TAbstractFile, oldName?: string) {
@@ -527,12 +479,8 @@ export default class TagFolderPlugin extends Plugin {
 
 	parsedFileCache = new Map<string, number>();
 
-	getFileCacheLinks(file: TFile) {
-		const cachedLinks = this.app.metadataCache.resolvedLinks;
-		const allLinks = this.getLinkView() == null ? [] : parseAllReference(cachedLinks, file.path, this.settings.linkConfig);
-
-		const links = [...allLinks.filter(e => e.endsWith(".md")).map(e => `${e}`)];
-		return links;
+	getFileCacheLinks(_file: TFile): string[] {
+		return [];
 	}
 	getFileCacheData(file: TFile): FileCache | false {
 		const metadata = this.app.metadataCache.getFileCache(file);
@@ -592,18 +540,6 @@ export default class TagFolderPlugin extends Plugin {
 				}
 				const newCache = this.getFileCacheData(procDiff);
 				if (newCache) {
-					// Update about references
-					if (this.getLinkView() != null) {
-						const oldLinks = old?.links || [];
-						const newLinks = newCache.links;
-						const all = unique([...oldLinks, ...newLinks]);
-						// Updated or Deleted reference
-						const diffs = all.filter(link => !oldLinks.contains(link) || !newLinks.contains(link))
-						for (const filename of diffs) {
-							const file = this.app.vault.getAbstractFileByPath(filename);
-							if (file instanceof TFile) processDiffs.push(file);
-						}
-					}
 					newCaches.push(newCache);
 				}
 				anyUpdated = anyUpdated || (JSON.stringify(fileCacheToCompare(old)) != JSON.stringify(fileCacheToCompare(newCache)));
@@ -615,7 +551,7 @@ export default class TagFolderPlugin extends Plugin {
 		return anyUpdated;
 	}
 
-	async getItemsList(mode: "tag" | "link"): Promise<ViewItem[]> {
+	async getItemsList(): Promise<ViewItem[]> {
 		const items: ViewItem[] = [];
 		const ignoreDocTags = this.settings.ignoreDocTags
 			.toLowerCase()
@@ -646,12 +582,10 @@ export default class TagFolderPlugin extends Plugin {
 			.map((ee) => ee.split(" ").map((e) => e.trim()));
 
 
-		const today = Date.now();
 		const archiveTags = this.settings.archiveTags
 			.toLowerCase()
 			.replace(/[\n ]/g, "")
 			.split(",");
-
 		for (const fileCache of this.fileCaches) {
 			if (
 				targetFolders.length > 0 &&
@@ -683,41 +617,14 @@ export default class TagFolderPlugin extends Plugin {
 				}
 			}
 
-			let allTags = [] as string[];
-			if (mode == "tag") {
-				const allTagsDocs = unique(fileCache.tags);
-				allTags = unique(allTagsDocs.map((e) => e.substring(1)).map(e => e in tagRedirectList ? tagRedirectList[e] : e));
-			} else {
-				allTags = unique(fileCache.links)
-			}
-			if (this.settings.disableNestedTags && mode == "tag") {
-				allTags = allTags.map((e) => e.split("/")).flat();
-			}
+			const allTagsDocs = unique(fileCache.tags);
+			let allTags = unique(allTagsDocs.map((e) => e.substring(1)).map(e => e in tagRedirectList ? tagRedirectList[e] : e));
 			if (allTags.length == 0) {
-				if (mode == "tag") {
-					allTags = ["_untagged"];
-				} else if (mode == "link") {
-					allTags = ["_unlinked"];
-				}
+				allTags = ["_untagged"];
 			}
 			if (fileCache.file.extension == "canvas") {
 				allTags.push("_VIRTUAL_TAG_CANVAS")
 			}
-			if (this.settings.useVirtualTag) {
-				const mtime = fileCache.file.stat.mtime;
-				const diff = today - mtime
-				const disp = secondsToFreshness(diff);
-				allTags.push(`_VIRTUAL_TAG_FRESHNESS/${disp}`);
-			}
-			// Display folder as tag
-			if (this.settings.displayFolderAsTag) {
-				const path = ["_VIRTUAL_TAG_FOLDER", ...fileCache.file.path.split("/")];
-				path.pop();// Remove filename
-				if (path.length > 0) {
-					allTags.push(`${path.join("/")}`);
-				}
-			}
-
 			// Again for the additional tags.
 			allTags = uniqueCaseIntensive(allTags.map(e => e in tagRedirectList ? tagRedirectList[e] : e));
 
@@ -776,37 +683,20 @@ export default class TagFolderPlugin extends Plugin {
 			// 	allTags = mergeSameParents(allTags);
 			// }
 
-			const links = [...fileCache.links];
-			if (links.length == 0) links.push("_unlinked");
-			if (this.settings.disableNarrowingDown && mode == "tag") {
-				const archiveTagsMatched = allTags.filter(e => archiveTags.contains(e.toLowerCase()));
-				const targetTags = archiveTagsMatched.length == 0 ? allTags : archiveTagsMatched;
-				for (const tags of targetTags) {
-					items.push({
-						tags: [tags],
-						extraTags: allTags.filter(e => e != tags),
-						path: fileCache.file.path,
-						displayName: this.getDisplayName(fileCache.file),
-						ancestors: [],
-						mtime: fileCache.file.stat.mtime,
-						ctime: fileCache.file.stat.ctime,
-						filename: fileCache.file.basename,
-						links: links,
-					});
-				}
-			} else {
-				items.push({
-					tags: allTags,
-					extraTags: [],
-					path: fileCache.file.path,
-					displayName: this.getDisplayName(fileCache.file),
-					ancestors: [],
-					mtime: fileCache.file.stat.mtime,
-					ctime: fileCache.file.stat.ctime,
-					filename: fileCache.file.basename,
-					links: links,
-				});
+			const archiveTagsMatched = allTags.filter(e => archiveTags.contains(e.toLowerCase()));
+			if (archiveTagsMatched.length > 0) {
+				allTags = archiveTagsMatched;
 			}
+			items.push({
+				tags: allTags,
+				extraTags: [],
+				path: fileCache.file.path,
+				displayName: this.getDisplayName(fileCache.file),
+				ancestors: [],
+				mtime: fileCache.file.stat.mtime,
+				ctime: fileCache.file.stat.ctime,
+				filename: fileCache.file.basename,
+			});
 		}
 		return items;
 	}
@@ -861,17 +751,10 @@ export default class TagFolderPlugin extends Plugin {
 		}
 	}
 	async applyFileInfoToView() {
-		const items = await this.getItemsList("tag");
+		const items = await this.getItemsList();
 		const itemsSorted = items.sort(this.compareItems);
 		this.allViewItems = itemsSorted;
 		allViewItems.set(this.allViewItems);
-		if (this.getLinkView() != null) {
-			const itemsLink = await this.getItemsList("link");
-			updateItemsLinkMap(itemsLink);
-			const itemsLinkSorted = itemsLink.sort(this.compareItems);
-			this.allViewItemsByLink = itemsLinkSorted;
-			allViewItemsByLink.set(this.allViewItemsByLink);
-		}
 	}
 
 	// Sweep updated file or all files to retrieve tags.
@@ -1012,28 +895,10 @@ export default class TagFolderPlugin extends Plugin {
 			})
 		}
 	}
-	async _initLinkView() {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TAGFOLDER_LINK);
-		if (leaves.length == 0) {
-			await this.app.workspace.getLeftLeaf(false)?.setViewState({
-				type: VIEW_TYPE_TAGFOLDER_LINK,
-				state: { treeViewType: "links" }
-			});
-		} else {
-			const newState = leaves[0].getViewState();
-			await leaves[0].setViewState({
-				type: VIEW_TYPE_TAGFOLDER_LINK,
-				state: { ...newState, treeViewType: "links" }
-			})
-		}
-	}
+
 	async initView() {
 		this.loadFileInfo();
 		await this._initTagView();
-	}
-	async initLinkView() {
-		this.loadFileInfo();
-		await this._initLinkView();
 	}
 
 	async activateView() {
@@ -1045,17 +910,6 @@ export default class TagFolderPlugin extends Plugin {
 			);
 		}
 	}
-	async activateViewLink() {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TAGFOLDER_LINK);
-		await this.initLinkView();
-		if (leaves.length > 0) {
-			await this.app.workspace.revealLeaf(
-				leaves[0]
-			);
-		}
-
-	}
-
 	tagInfo: TagInfoDict = {};
 	tagInfoFrontMatterBuffer: Record<string, object> = {};
 	skipOnce = false;
@@ -1086,12 +940,10 @@ export default class TagFolderPlugin extends Plugin {
 
 	applyTagInfo() {
 		if (this.tagInfo == null) return;
-		if (!this.settings.useTagInfo) return;
 		tagInfo.set(this.tagInfo);
 	}
 
 	async loadTagInfo() {
-		if (!this.settings.useTagInfo) return;
 		if (this.tagInfo == null) this.tagInfo = {};
 		const file = this.getTagInfoFile();
 		if (file == null) return;
@@ -1130,7 +982,6 @@ export default class TagFolderPlugin extends Plugin {
 	}
 
 	async saveTagInfo() {
-		if (!this.settings.useTagInfo) return;
 		if (this.tagInfo == null) return;
 		let file = this.getTagInfoFile();
 		if (file == null) {
@@ -1150,15 +1001,11 @@ export default class TagFolderPlugin extends Plugin {
 
 	async refreshAllViewItems() {
 		this.parsedFileCache.clear();
-		const items = await this.getItemsList("tag");
+		const items = await this.getItemsList();
 		const itemsSorted = items.sort(this.compareItems);
 		this.allViewItems = itemsSorted;
 		allViewItems.set(this.allViewItems);
 
-		const itemsLink = await this.getItemsList("link");
-		const itemsLinkSorted = itemsLink.sort(this.compareItems);
-		this.allViewItemsByLink = itemsLinkSorted;
-		allViewItemsByLink.set(this.allViewItemsByLink);
 	}
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -1332,19 +1179,6 @@ class TagFolderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
-		new Setting(containerEl)
-			.setName("Disable narrowing down")
-			.setDesc(
-				"When this feature is enabled, relevant tags will be shown with the title instead of making a sub-structure."
-			)
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.disableNarrowingDown)
-					.onChange(async (value) => {
-						this.plugin.settings.disableNarrowingDown = value;
-						await this.plugin.saveSettings();
-					});
-			});
 		containerEl.createEl("h2", { text: "Files" });
 		new Setting(containerEl)
 			.setName("Display method")
@@ -1449,26 +1283,6 @@ class TagFolderSettingTab extends PluginSettingTab {
 
 
 		new Setting(containerEl)
-			.setName("Use virtual tags")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.useVirtualTag)
-					.onChange(async (value) => {
-						this.plugin.settings.useVirtualTag = value;
-						await this.plugin.saveSettings();
-					});
-			});
-		new Setting(containerEl)
-			.setName("Display folder as tag")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.displayFolderAsTag)
-					.onChange(async (value) => {
-						this.plugin.settings.displayFolderAsTag = value;
-						await this.plugin.saveSettings();
-					});
-			});
-		new Setting(containerEl)
 			.setName("Store tags in frontmatter for new notes")
 			.setDesc("Otherwise, tags are stored with #hashtags at the top of the note")
 			.addToggle((toggle) => {
@@ -1560,17 +1374,6 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Do not treat nested tags as dedicated levels")
-			.setDesc("Treat nested tags as normal tags")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.disableNestedTags)
-					.onChange(async (value) => {
-						this.plugin.settings.disableNestedTags = value;
-						await this.plugin.saveSettings();
-					});
-			});
-		new Setting(containerEl)
 			.setName("Reduce duplicated parents in nested tags")
 			.setDesc("If enabled, #web/css, #web/javascript will merged into web -> css -> javascript")
 			.addToggle((toggle) => {
@@ -1592,52 +1395,6 @@ class TagFolderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
-
-		containerEl.createEl("h2", { text: "Link Folder" });
-		new Setting(containerEl)
-			.setName("Use Incoming")
-			.setDesc("")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.linkConfig.incoming.enabled)
-					.onChange(async (value) => {
-						this.plugin.settings.linkConfig.incoming.enabled = value;
-						await this.plugin.saveSettings();
-					})
-			);
-		new Setting(containerEl)
-			.setName("Use Outgoing")
-			.setDesc("")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.linkConfig.outgoing.enabled)
-					.onChange(async (value) => {
-						this.plugin.settings.linkConfig.outgoing.enabled = value;
-						await this.plugin.saveSettings();
-					})
-			);
-		new Setting(containerEl)
-			.setName("Hide indirectly linked notes")
-			.setDesc("")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.linkShowOnlyFDR)
-					.onChange(async (value) => {
-						this.plugin.settings.linkShowOnlyFDR = value;
-						await this.plugin.saveSettings();
-					})
-			);
-		new Setting(containerEl)
-			.setName("Connect linked tree")
-			.setDesc("")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.linkCombineOtherTree)
-					.onChange(async (value) => {
-						this.plugin.settings.linkCombineOtherTree = value;
-						await this.plugin.saveSettings();
-					})
-			);
 
 		containerEl.createEl("h2", { text: "Filters" });
 		new Setting(containerEl)
@@ -1748,7 +1505,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 					.setButtonText("Copy tags")
 					.setDisabled(false)
 					.onClick(async () => {
-						const itemsAll = await this.plugin.getItemsList("tag");
+						const itemsAll = await this.plugin.getItemsList();
 						const items = itemsAll.map(e => e.tags.filter(e => e != "_untagged")).filter(e => e.length);
 						await navigator.clipboard.writeText(items.map(e => e.map(e => `#${e}`).join(", ")).join("\n"));
 						new Notice("Copied to clipboard");
@@ -1760,7 +1517,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						const x = new Map<string, string>();
 						let i = 0;
-						const itemsAll = await this.plugin.getItemsList("tag");
+						const itemsAll = await this.plugin.getItemsList();
 						const items = itemsAll.map(e => e.tags.filter(e => e != "_untagged").map(e =>
 							e.split("/").map(e => e.startsWith("_VIRTUAL") ? e : x.has(e) ? x.get(e) : (x.set(e, `tag${i++}`), i)).join("/")).filter(e => e.length));
 

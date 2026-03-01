@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		allViewItems,
-		allViewItemsByLink,
 		appliedFiles,
 		performHide,
 		searchString,
@@ -11,11 +10,10 @@
 	import {
 		type ViewItem,
 		type TagFolderSettings,
-		type TREE_TYPE,
 		type TagFolderListState,
 	} from "./types";
 	import V2TreeFolderComponent from "./V2TreeFolderComponent.svelte";
-	import { onDestroy, onMount, tick } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 	import { setIcon } from "obsidian";
 	import { trimTrailingSlash } from "./util";
 	import { setContext } from "svelte";
@@ -45,7 +43,6 @@
 		) => Promise<void>;
 		isViewSwitchable: boolean;
 		switchView: () => void;
-		viewType?: TREE_TYPE;
 		stateStore?: Writable<TagFolderListState>;
 	}
 
@@ -63,7 +60,6 @@
 		openScrollView,
 		isViewSwitchable,
 		switchView,
-		viewType = "tags",
 		stateStore,
 	}: Props = $props();
 
@@ -80,7 +76,6 @@
 			};
 		}
 	});
-	// let viewItemsSrc = $state([] as ViewItem[]);
 
 	let updatedFiles = $state([] as string[]);
 	appliedFiles.subscribe(async (filenames) => {
@@ -88,32 +83,14 @@
 	});
 
 	const viewItemsSrc = $derived.by(() => {
-		if (viewType == "tags") return $allViewItems;
-		return $allViewItemsByLink;
+		return $allViewItems;
 	});
 
 	let _setting = $state($tagFolderSetting as TagFolderSettings);
-	let outgoingEnabled = $state(false);
-	let incomingEnabled = $state(false);
-	let bothEnabled = $state(false);
-	let onlyFDREnabled = $state(false);
 	tagFolderSetting.subscribe((setting) => {
 		_setting = setting;
-		const incoming = _setting.linkConfig?.incoming?.enabled ?? false;
-		const outgoing = _setting.linkConfig?.outgoing?.enabled ?? false;
-		if (!incoming && !outgoing) {
-			let newSet = { ..._setting };
-			newSet.linkConfig.incoming.enabled = true;
-			newSet.linkConfig.outgoing.enabled = true;
-			if (saveSettings) saveSettings(newSet);
-			bothEnabled = true;
-		} else {
-			outgoingEnabled = !incoming && outgoing;
-			incomingEnabled = incoming && !outgoing;
-			bothEnabled = incoming && outgoing;
-		}
-		onlyFDREnabled = _setting.linkShowOnlyFDR;
 	});
+
 	let showSearch = $state(false);
 	function toggleSearch() {
 		showSearch = !showSearch;
@@ -133,40 +110,13 @@
 	let iconDivEl = $state<HTMLDivElement>();
 	let newNoteIcon = $state("");
 	let folderIcon = $state("");
+	let folderOpenIcon = $state("");
+	let fileIcon = $state("");
 	let upAndDownArrowsIcon = $state("");
 	let stackedLevels = $state("");
 	let searchIcon = $state("");
 	let switchIcon = $state("");
-	let outgoingIcon = $state("");
-	let incomingIcon = $state("");
-	let bothIcon = $state("");
-	let linkIcon = $state("");
 	let closeAllIcon = $state("");
-
-	async function switchIncoming() {
-		let newSet = { ..._setting };
-		newSet.linkConfig.incoming.enabled = true;
-		newSet.linkConfig.outgoing.enabled = false;
-		if (saveSettings) await saveSettings(newSet);
-	}
-	async function switchOutgoing() {
-		let newSet = { ..._setting };
-		newSet.linkConfig.incoming.enabled = false;
-		newSet.linkConfig.outgoing.enabled = true;
-
-		if (saveSettings) await saveSettings(newSet);
-	}
-	async function switchBoth() {
-		let newSet = { ..._setting };
-		newSet.linkConfig.incoming.enabled = true;
-		newSet.linkConfig.outgoing.enabled = true;
-		if (saveSettings) await saveSettings(newSet);
-	}
-	async function switchOnlyFDR() {
-		let newSet = { ..._setting };
-		newSet.linkShowOnlyFDR = !_setting.linkShowOnlyFDR;
-		if (saveSettings) await saveSettings(newSet);
-	}
 
 	let observer: IntersectionObserver | undefined;
 
@@ -228,8 +178,12 @@
 		}, observingOption);
 		observeAllQueued();
 		if (iconDivEl) {
-			setIcon(iconDivEl, "right-triangle");
+			setIcon(iconDivEl, "lucide-folder");
 			folderIcon = `${iconDivEl.innerHTML}`;
+			setIcon(iconDivEl, "lucide-folder-open");
+			folderOpenIcon = `${iconDivEl.innerHTML}`;
+			setIcon(iconDivEl, "lucide-file");
+			fileIcon = `${iconDivEl.innerHTML}`;
 			setIcon(iconDivEl, "lucide-edit");
 			newNoteIcon = `${iconDivEl.innerHTML}`;
 			if (isMainTree) {
@@ -240,20 +194,8 @@
 				setIcon(iconDivEl, "search");
 				searchIcon = iconDivEl.innerHTML;
 			}
-			if (viewType == "links") {
-				setIcon(iconDivEl, "links-coming-in");
-				incomingIcon = iconDivEl.innerHTML;
-				setIcon(iconDivEl, "links-going-out");
-				outgoingIcon = iconDivEl.innerHTML;
-				setIcon(iconDivEl, "link");
-				linkIcon = iconDivEl.innerHTML;
-				setIcon(iconDivEl, "lucide-link-2");
-				bothIcon = iconDivEl.innerHTML;
-			}
 			setIcon(iconDivEl, "lucide-arrow-left-right");
-
 			switchIcon = iconDivEl.innerHTML;
-
 			setIcon(iconDivEl, "lucide-chevrons-down-up");
 			closeAllIcon = iconDivEl.innerHTML;
 		}
@@ -268,11 +210,6 @@
 	onDestroy(() => {
 		observer?.disconnect();
 	});
-	let headerTitle = $derived(
-		title == ""
-			? `${viewType == "tags" ? "Tags" : "Links"}: ${vaultName}`
-			: `Items: ${title}`,
-	);
 	const viewItems = $derived.by(() => {
 		if (!viewItemsSrc) {
 			return [];
@@ -371,48 +308,6 @@
 				{@html switchIcon}
 			</div>
 		{/if}
-		{#if viewType == "links"}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="clickable-icon nav-action-button"
-				class:is-active={incomingEnabled}
-				aria-label="Toggle Incoming"
-				onclick={switchIncoming}
-			>
-				{@html incomingIcon}
-			</div>
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="clickable-icon nav-action-button"
-				class:is-active={outgoingEnabled}
-				aria-label="Toggle Outgoing"
-				onclick={switchOutgoing}
-			>
-				{@html outgoingIcon}
-			</div>
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="clickable-icon nav-action-button"
-				class:is-active={bothEnabled}
-				aria-label="Toggle Incoming&Outgoing"
-				onclick={switchBoth}
-			>
-				{@html bothIcon}
-			</div>
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="clickable-icon nav-action-button"
-				class:is-active={onlyFDREnabled}
-				aria-label="Toggle Hide indirect notes"
-				onclick={switchOnlyFDR}
-			>
-				{@html linkIcon}
-			</div>
-		{/if}
 		{#if isMainTree}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -448,9 +343,10 @@
 {/if}
 <div class="nav-files-container node-insert-event" bind:this={scrollParent}>
 	<V2TreeFolderComponent
-		{viewType}
 		items={viewItems}
 		{folderIcon}
+		{folderOpenIcon}
+		{fileIcon}
 		thisName={""}
 		isRoot={true}
 		{showMenu}
@@ -459,7 +355,6 @@
 		{hoverPreview}
 		{openScrollView}
 		depth={1}
-		{headerTitle}
 	/>
 </div>
 

@@ -15,7 +15,6 @@ export const selectedTags = writable<string[]>();
 
 //v2 
 export const allViewItems = writable<ViewItem[]>();
-export const allViewItemsByLink = writable<ViewItem[]>();
 export const appliedFiles = writable<string[]>();
 export const v2expandedTags = writable(new Set<string>());
 

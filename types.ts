@@ -13,7 +13,6 @@ export interface ViewItem {
 	mtime: number;
 	ctime: number;
 	filename: string;
-	links: string[];
 }
 export interface TagInfoDict {
 	[key: string]: TagInfo;
@@ -26,16 +25,6 @@ export interface TagInfo {
 }
 
 
-export type LinkParseConf = {
-	outgoing: {
-		enabled: boolean,
-		key: string,
-	},
-	incoming: {
-		enabled: boolean,
-		key: string
-	}
-}
 export const enumShowListIn = {
 	"": "Sidebar",
 	"CURRENT_PANE": "Current pane",
@@ -63,7 +52,6 @@ export interface TagFolderSettings {
 	sortExactFirst: boolean;
 	sortTypeTag: "NAME_ASC" | "NAME_DESC" | "ITEMS_ASC" | "ITEMS_DESC";
 	expandLimit: number;
-	disableNestedTags: boolean;
 
 	hideItems: HIDE_ITEMS_TYPE;
 	scanDelay: number;
@@ -73,20 +61,15 @@ export interface TagFolderSettings {
 	useTagInfo: boolean;
 	tagInfo: string;
 	mergeRedundantCombination: boolean;
-	useVirtualTag: boolean;
 	useFrontmatterTagsForNewNotes: boolean,
 	doNotSimplifyTags: boolean;
 	overrideTagClicking: boolean;
 	useMultiPaneList: boolean;
 	archiveTags: string;
-	disableNarrowingDown: boolean;
 	expandUntaggedToRoot: boolean;
 	disableDragging: boolean;
-	linkConfig: LinkParseConf;
-	linkShowOnlyFDR: boolean;
-	linkCombineOtherTree: boolean;
+	pinnedFolders: string[];
 	showListIn: keyof typeof enumShowListIn;
-	displayFolderAsTag: boolean;
 }
 
 export const DEFAULT_SETTINGS: TagFolderSettings = {
@@ -99,7 +82,6 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	sortExactFirst: false,
 	sortTypeTag: "NAME_ASC",
 	expandLimit: 0,
-	disableNestedTags: false,
 	hideItems: "NONE",
 	ignoreFolders: "",
 	targetFolders: "",
@@ -108,31 +90,17 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	reduceNestedParent: true,
 	frontmatterKey: "title",
 	useTagInfo: false,
-	tagInfo: "pininfo.md",
+	tagInfo: ".pininfo.md",
 	mergeRedundantCombination: false,
-	useVirtualTag: false,
 	useFrontmatterTagsForNewNotes: false,
 	doNotSimplifyTags: false,
 	overrideTagClicking: false,
 	useMultiPaneList: false,
 	archiveTags: "",
-	disableNarrowingDown: false,
 	expandUntaggedToRoot: false,
 	disableDragging: false,
-	linkConfig: {
-		incoming: {
-			enabled: true,
-			key: "",
-		},
-		outgoing: {
-			enabled: true,
-			key: ""
-		}
-	},
-	linkShowOnlyFDR: true,
-	linkCombineOtherTree: true,
+	pinnedFolders: [],
 	showListIn: "",
-	displayFolderAsTag: false,
 };
 
 export const VIEW_TYPE_SCROLL = "tagfolder-view-scroll";
@@ -149,32 +117,13 @@ export type ScrollViewState = {
 	tagPath: string,
 }
 
-export const EPOCH_MINUTE = 60;
-export const EPOCH_HOUR = EPOCH_MINUTE * 60;
-export const EPOCH_DAY = EPOCH_HOUR * 24;
-
-export const FRESHNESS_1 = "FRESHNESS_01";
-export const FRESHNESS_2 = "FRESHNESS_02";
-export const FRESHNESS_3 = "FRESHNESS_03";
-export const FRESHNESS_4 = "FRESHNESS_04";
-export const FRESHNESS_5 = "FRESHNESS_05";
-
-
 export const tagDispDict: { [key: string]: string } = {
-	FRESHNESS_01: "🕐",
-	FRESHNESS_02: "📖",
-	FRESHNESS_03: "📗",
-	FRESHNESS_04: "📚",
-	FRESHNESS_05: "🗄",
-	_VIRTUAL_TAG_FRESHNESS: "⌛",
 	_VIRTUAL_TAG_CANVAS: "📋 Canvas",
-	_VIRTUAL_TAG_FOLDER: "📁"
 };
 
 export const VIEW_TYPE_TAGFOLDER = "tagfolder-view";
-export const VIEW_TYPE_TAGFOLDER_LINK = "tagfolder-link-view";
 export const VIEW_TYPE_TAGFOLDER_LIST = "tagfolder-view-list";
-export type TREE_TYPE = "tags" | "links";
+export type TREE_TYPE = "tags";
 
 export const OrderKeyTag: Record<string, string> = {
 	NAME: "Tag name",

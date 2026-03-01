@@ -1,18 +1,10 @@
-import { allViewItemsByLink, tagInfo } from "store";
+import { tagInfo } from "store";
 import {
-	EPOCH_DAY,
-	EPOCH_HOUR,
-	FRESHNESS_1,
-	FRESHNESS_2,
-	FRESHNESS_3,
-	FRESHNESS_4,
-	FRESHNESS_5,
 	tagDispDict,
 	type TagFolderSettings,
 	type TagInfo,
 	type TagInfoDict,
 	type ViewItem,
-	type LinkParseConf,
 	type FileCache
 } from "types";
 
@@ -76,16 +68,6 @@ export function renderSpecialTag(tagSrc: string) {
 	return tag in tagDispAlternativeDict ? tagDispAlternativeDict[tag] : tagSrc;
 }
 
-export function secondsToFreshness(totalAsMSec: number) {
-	const totalAsSec = ~~(totalAsMSec / 1000);
-	const sign = totalAsSec / Math.abs(totalAsSec);
-	const totalSec = ~~(totalAsSec * sign);
-	if (totalSec < EPOCH_HOUR) return FRESHNESS_1
-	if (totalSec < EPOCH_HOUR * 6) return FRESHNESS_2
-	if (totalSec < EPOCH_DAY * 3) return FRESHNESS_3
-	if (totalSec < EPOCH_DAY * 7) return FRESHNESS_4
-	return FRESHNESS_5
-}
 
 const queues = [] as (() => void)[];
 
@@ -249,16 +231,26 @@ export const V2FI_IDX_CHILDREN = 3;
 export function selectCompareMethodTags(settings: TagFolderSettings, tagInfo: TagInfoDict) {
 	const _tagInfo = tagInfo;
 	const invert = settings.sortTypeTag.contains("_DESC") ? -1 : 1;
+	const pinnedFolders = settings.pinnedFolders ?? [];
 	const subTreeChar: Record<typeof invert, string> = {
 		[-1]: `\u{10ffff}`,
 		[1]: `_`
 	}
 		;
+	// Pinned folders always sort to top, regardless of sort direction.
+	const pinnedFirst = (aName: string, bName: string): number | null => {
+		const aPinned = pinnedFolders.contains(aName);
+		const bPinned = pinnedFolders.contains(bName);
+		if (aPinned === bPinned) return null;
+		return aPinned ? -1 : 1;
+	};
 	const sortByName = (a: V2FolderItem, b: V2FolderItem) => {
 		const isASubTree = a[V2FI_IDX_TAGDISP][0] == "";
 		const isBSubTree = b[V2FI_IDX_TAGDISP][0] == "";
 		const aName = a[V2FI_IDX_TAGNAME];
 		const bName = b[V2FI_IDX_TAGNAME];
+		const pinned = pinnedFirst(aName, bName);
+		if (pinned !== null) return pinned;
 		const aPrefix = isASubTree ? subTreeChar[invert] : "";
 		const bPrefix = isBSubTree ? subTreeChar[invert] : "";
 		return compare(getTagName(aName, aPrefix, settings.useTagInfo ? _tagInfo : undefined, invert), getTagName(bName, bPrefix, settings.useTagInfo ? _tagInfo : undefined, invert)) * invert;
@@ -269,6 +261,8 @@ export function selectCompareMethodTags(settings: TagFolderSettings, tagInfo: Ta
 			return (a: V2FolderItem, b: V2FolderItem) => {
 				const aName = a[V2FI_IDX_TAGNAME];
 				const bName = b[V2FI_IDX_TAGNAME];
+				const pinned = pinnedFirst(aName, bName);
+				if (pinned !== null) return pinned;
 				const aCount = a[V2FI_IDX_CHILDREN].length - ((settings.useTagInfo && (aName in _tagInfo && "key" in _tagInfo[aName])) ? 100000 * invert : 0);
 				const bCount = b[V2FI_IDX_CHILDREN].length - ((settings.useTagInfo && (bName in _tagInfo && "key" in _tagInfo[bName])) ? 100000 * invert : 0);
 				if (aCount == bCount) return sortByName(a, b);
@@ -385,35 +379,13 @@ export function parseTagName(thisName: string, _tagInfo: TagInfoDict): [string, 
 	if (tagName.endsWith("/")) {
 		tagName = tagName.substring(0, tagName.length - 1);
 	}
-	const tagInfo = tagName in _tagInfo ? _tagInfo[tagName] : undefined;
-	const tagMark = getTagMark(tagInfo);
-	tagNameDisp = [`${tagMark}${renderSpecialTag(tagName)}`];
+	tagNameDisp = [`${renderSpecialTag(tagName)}`];
 	if (inSubTree)
-		tagNameDisp = [`${tagMark}`, `${renderSpecialTag(tagName)}`];
+		tagNameDisp = [``, `${renderSpecialTag(tagName)}`];
 
 	return [tagName, tagNameDisp]
 }
 
-function parseAllForwardReference(metaCache: Record<string, Record<string, number>>, filename: string, passed: string[]) {
-
-	const allForwardLinks = Object.keys(metaCache?.[filename] ?? {}).filter(e => !passed.contains(e));
-	const ret = unique(allForwardLinks);
-	return ret;
-}
-function parseAllReverseReference(metaCache: Record<string, Record<string, number>>, filename: string, passed: string[]) {
-	const allReverseLinks = Object.entries((metaCache)).filter(([, links]) => filename in links).map(([name,]) => name).filter(e => !passed.contains(e));
-	const ret = unique(allReverseLinks);
-	return ret;
-}
-
-export function parseAllReference(metaCache: Record<string, Record<string, number>>, filename: string, conf: LinkParseConf): string[] {
-	const allForwardLinks = (!conf?.outgoing?.enabled) ? [] : parseAllForwardReference(metaCache, filename, []);
-	const allReverseLinks = (!conf?.incoming?.enabled) ? [] : parseAllReverseReference(metaCache, filename, []);
-	let linked = [...allForwardLinks, ...allReverseLinks];
-	if (linked.length != 0) linked = unique([filename, ...linked]);
-
-	return linked;
-}
 
 export function isIntersect<T>(a: T[], b: T[]) {
 	if (a.length == 0 && b.length != 0) return false;
@@ -432,29 +404,6 @@ export function fileCacheToCompare(cache: FileCache | undefined | false) {
 	return ({ l: cache.links, t: cache.tags })
 }
 
-const allViewItemsMap = new Map<string, ViewItem>();
-allViewItemsByLink.subscribe(e => {
-	updateItemsLinkMap(e);
-});
-export function updateItemsLinkMap(e: ViewItem[]) {
-	allViewItemsMap.clear();
-	if (e) e.forEach(item => allViewItemsMap.set(item.path, item));
-}
-
-export function getViewItemFromPath(path: string) {
-	return allViewItemsMap.get(path);
-}
-
-export function getAllLinksRecursive(item: ViewItem, trail: string[]): string[] {
-	const allLinks = item.links;
-	const leftLinks = allLinks.filter(e => !trail.contains(e));
-	const allChildLinks = leftLinks.flatMap(itemName => {
-		const item = getViewItemFromPath(itemName);
-		if (!item) return [];
-		return getAllLinksRecursive(item, [...trail, itemName]);
-	})
-	return unique([...leftLinks, ...allChildLinks]);
-}
 /*
 let showResultTimer: ReturnType<typeof setTimeout>;
 const measured = {} as Record<string, {
