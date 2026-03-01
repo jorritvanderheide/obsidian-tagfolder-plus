@@ -32,7 +32,7 @@ export class TagFolderView extends TagFolderViewBase {
 	}
 
 	getDisplayText() {
-		return "Tag Folder";
+		return "Tag Folder Plus";
 	}
 
 	async onOpen() {

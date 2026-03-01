@@ -7,7 +7,6 @@ import {
 	getAllTags,
 	MarkdownView,
 	normalizePath,
-	Notice,
 	parseYaml,
 	Platform,
 	Plugin,
@@ -46,7 +45,6 @@ import {
 	trimTrailingSlash,
 	isSpecialTag,
 	trimPrefix,
-	uniqueCaseIntensive
 } from "./util";
 import { TagFolderView } from "./TagFolderView";
 import { TagFolderList } from "./TagFolderList";
@@ -225,7 +223,7 @@ export default class TagFolderPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "tagfolder-open",
-			name: "Show Tag Folder",
+			name: "Show Tag Folder Plus",
 			callback: () => {
 				void this.activateView();
 			},
@@ -602,9 +600,7 @@ export default class TagFolderPlugin extends Plugin {
 			if (fileCache.file.extension == "canvas") {
 				allTags.push("_VIRTUAL_TAG_CANVAS")
 			}
-			// Again for the additional tags.
-			allTags = uniqueCaseIntensive(allTags.map(e => e in tagRedirectList ? tagRedirectList[e] : e));
-
+	
 			if (
 				allTags.some((tag) =>
 					ignoreDocTags.contains(tag.toLowerCase())
@@ -1050,18 +1046,6 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 
 
-		new Setting(containerEl)
-			.setName("Use frontmatter tags for new notes")
-			.setDesc("Store tags as frontmatter YAML when creating a new note from a tag folder, instead of inline #hashtags.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.useFrontmatterTagsForNewNotes)
-					.onChange(async (value) => {
-						this.plugin.settings.useFrontmatterTagsForNewNotes = value;
-						await this.plugin.saveSettings();
-					});
-			});
-
 		containerEl.createEl("h2", { text: "Actions" });
 		new Setting(containerEl)
 			.setName("Intercept tag clicks")
@@ -1266,48 +1250,5 @@ class TagFolderSettingTab extends PluginSettingTab {
 				text.inputEl.setAttribute("min", "250");
 				return text;
 			});
-		new Setting(containerEl)
-			.setName("Disable tag drag-and-drop")
-			.setDesc("Turn off drag-and-drop reordering of tags. Enable this if you experience issues, as the feature uses internal Obsidian APIs.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.disableDragging)
-					.onChange(async (value) => {
-						this.plugin.settings.disableDragging = value;
-						await this.plugin.saveSettings();
-					});
-			});
-		containerEl.createEl("h2", { text: "Utilities" });
-
-		new Setting(containerEl)
-			.setName("Export tags for bug reports")
-			.setDesc(
-				"Copy your tag list to the clipboard to include in a GitHub issue. Use ‘Copy disguised tags’ to anonymise tag names before sharing."
-			)
-			.addButton((button) =>
-				button
-					.setButtonText("Copy tags")
-					.setDisabled(false)
-					.onClick(async () => {
-						const itemsAll = await this.plugin.getItemsList();
-						const items = itemsAll.map(e => e.tags.filter(e => e != "_untagged")).filter(e => e.length);
-						await navigator.clipboard.writeText(items.map(e => e.map(e => `#${e}`).join(", ")).join("\n"));
-						new Notice("Copied to clipboard");
-					}))
-			.addButton((button) =>
-				button
-					.setButtonText("Copy disguised tags")
-					.setDisabled(false)
-					.onClick(async () => {
-						const x = new Map<string, string>();
-						let i = 0;
-						const itemsAll = await this.plugin.getItemsList();
-						const items = itemsAll.map(e => e.tags.filter(e => e != "_untagged").map(e =>
-							e.split("/").map(e => e.startsWith("_VIRTUAL") ? e : x.has(e) ? x.get(e) : (x.set(e, `tag${i++}`), i)).join("/")).filter(e => e.length));
-
-						await navigator.clipboard.writeText(items.map(e => e.map(e => `#${e}`).join(", ")).join("\n"));
-						new Notice("Copied to clipboard");
-					})
-			);
 	}
 }
