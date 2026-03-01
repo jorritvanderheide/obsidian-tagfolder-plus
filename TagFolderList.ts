@@ -76,7 +76,6 @@ export class TagFolderList extends TagFolderViewBase {
 				showMenu: this.showMenu,
 				showLevelSelect: this.showLevelSelect,
 				showOrder: this.showOrder,
-				openScrollView: this.plugin.openScrollView,
 				isViewSwitchable: this.plugin.settings.useMultiPaneList,
 				switchView: this.switchView,
 				saveSettings: this.saveSettings.bind(this),

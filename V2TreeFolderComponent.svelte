@@ -69,12 +69,6 @@
         ) => void;
         openFile: (path: string, specialKey: boolean) => void;
         hoverPreview: (e: MouseEvent, path: string) => void;
-        openScrollView: (
-            leaf: undefined,
-            title: string,
-            tagPath: string,
-            files: string[],
-        ) => Promise<void>;
     }
 
     let {
@@ -92,7 +86,6 @@
         showMenu,
         openFile,
         hoverPreview,
-        openScrollView,
     }: Props = $props();
 
     // Watch them to realise the configurations to display immediately
@@ -107,19 +100,6 @@
 
     // Event handlers
 
-    function handleOpenScroll(
-        e: MouseEvent,
-        trails: string[],
-        filePaths: string[],
-    ) {
-        openScrollView(
-            undefined,
-            "",
-            joinPartialPath(removeIntermediatePath(trails)).join(", "),
-            filePaths,
-        );
-        e.preventDefault();
-    }
     function shouldResponsibleFor(evt: MouseEvent) {
         if (
             evt.target instanceof Element &&
@@ -700,7 +680,6 @@
                     isRoot={false}
                     {showMenu}
                     {isMainTree}
-                    {openScrollView}
                     {hoverPreview}
                     {tagName}
                     {tagNameDisp}

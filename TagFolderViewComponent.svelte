@@ -34,12 +34,6 @@
 		) => void;
 		showLevelSelect: (evt: MouseEvent) => void;
 		showOrder: (evt: MouseEvent) => void;
-		openScrollView: (
-			leaf: undefined,
-			title: string,
-			tagPath: string,
-			files: string[],
-		) => Promise<void>;
 		isViewSwitchable: boolean;
 		switchView: () => void;
 		stateStore?: Writable<TagFolderListState>;
@@ -55,7 +49,6 @@
 		showMenu,
 		showLevelSelect,
 		showOrder,
-		openScrollView,
 		isViewSwitchable,
 		switchView,
 		stateStore,
@@ -357,7 +350,6 @@
 		{openFile}
 		{isMainTree}
 		{hoverPreview}
-		{openScrollView}
 		depth={1}
 	/>
 </div>

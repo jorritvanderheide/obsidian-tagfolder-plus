@@ -24,12 +24,9 @@ import {
 	OrderDirection,
 	OrderKeyItem,
 	OrderKeyTag,
-	type ScrollViewFile,
-	type ScrollViewState,
 	type TagFolderListState,
 	type TagFolderSettings,
 	type TagInfoDict,
-	VIEW_TYPE_SCROLL,
 	VIEW_TYPE_TAGFOLDER,
 	VIEW_TYPE_TAGFOLDER_LIST,
 	type ViewItem,
@@ -52,7 +49,6 @@ import {
 	trimPrefix,
 	uniqueCaseIntensive
 } from "./util";
-import { ScrollView } from "./ScrollView";
 import { TagFolderView } from "./TagFolderView";
 import { TagFolderList } from "./TagFolderList";
 
@@ -207,7 +203,6 @@ export default class TagFolderPlugin extends Plugin {
 		this.hoverPreview = this.hoverPreview.bind(this);
 		this.modifyFile = this.modifyFile.bind(this);
 		this.setSearchString = this.setSearchString.bind(this);
-		this.openScrollView = this.openScrollView.bind(this);
 		// Make loadFileInfo debounced .
 		this.loadFileInfo = debounce(
 			this.loadFileInfo.bind(this),
@@ -222,10 +217,6 @@ export default class TagFolderPlugin extends Plugin {
 		this.registerView(
 			VIEW_TYPE_TAGFOLDER_LIST,
 			(leaf) => new TagFolderList(leaf, this)
-		);
-		this.registerView(
-			VIEW_TYPE_SCROLL,
-			(leaf) => new ScrollView(leaf, this)
 		);
 		this.app.workspace.onLayoutReady(async () => {
 			this.loadFileInfo();
@@ -739,7 +730,6 @@ export default class TagFolderPlugin extends Plugin {
 				await this.applyFileInfoToView();
 			}
 			// Apply content of diffs to each view.
-			await this.applyUpdateIntoScroll(diffs);
 			const af = this.app.workspace.getActiveFile();
 			if (af && this.currentOpeningFile != af.path) {
 				this.currentOpeningFile = af.path;
@@ -792,93 +782,7 @@ export default class TagFolderPlugin extends Plugin {
 		pluginInstance.set(undefined!);
 	}
 
-	async openScrollView(leaf: WorkspaceLeaf | undefined, title: string, tagPath: string, files: string[]) {
-		if (!leaf) {
-			leaf = this.app.workspace.getLeaf("split");
-		}
-		// this.app.workspace.create
-		await leaf.setViewState({
-			type: VIEW_TYPE_SCROLL,
-			active: true,
-			state: { files: files.map(e => ({ path: e })), title: title, tagPath: tagPath } as ScrollViewState
-		});
 
-		void this.app.workspace.revealLeaf(
-			leaf
-		);
-	}
-
-	async applyUpdateIntoScroll(files: TFile[]) {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
-		for (const leaf of leaves) {
-			const view = leaf.view as ScrollView;
-			if (!view) continue;
-			const viewState = leaf.getViewState();
-			const scrollViewState = view?.getScrollViewState();
-			if (!viewState || !scrollViewState) continue;
-			const viewStat = { ...viewState, state: { ...scrollViewState } }
-			for (const file of files) {
-				if (file && view.isFileOpened(file.path)) {
-
-					const newStat = {
-						...viewStat,
-						state: {
-							...viewStat.state,
-							files: viewStat.state.files.map(e => e.path == file.path ? ({
-								path: file.path
-							} as ScrollViewFile) : e)
-
-						}
-					}
-					await leaf.setViewState(newStat);
-				}
-			}
-			const tagPath = viewStat.state.tagPath;
-			const tags = tagPath.split(", ");
-
-			let matchedFiles = this.allViewItems;
-			for (const tag of tags) {
-				matchedFiles = matchedFiles.filter((item) =>
-					item.tags
-						.map((tag) => tag.toLowerCase())
-						.some(
-							(itemTag) =>
-								itemTag ==
-								tag.toLowerCase() ||
-								(itemTag + "/").startsWith(
-									tag.toLowerCase() +
-									(tag.endsWith("/")
-										? ""
-										: "/")
-								)
-						)
-				)
-			}
-
-			const newFilesArray = matchedFiles.map(e => e.path);
-			const newFiles = newFilesArray.sort().join("-");
-			const oldFiles = viewStat.state.files.map(e => e.path).sort().join("-");
-			if (newFiles != oldFiles) {
-				// List has changed
-				const newStat = {
-					...viewStat,
-					state: {
-						...viewStat.state,
-						files: newFilesArray.map(path => {
-							const old = viewStat.state.files.find(e => e.path == path);
-							if (old) return old;
-							return {
-								path: path
-							} as ScrollViewFile;
-
-
-						})
-					}
-				}
-				await leaf.setViewState(newStat);
-			}
-		}
-	}
 
 	async _initTagView() {
 		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TAGFOLDER);

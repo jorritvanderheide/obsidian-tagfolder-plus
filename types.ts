@@ -105,20 +105,6 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	showListIn: "",
 };
 
-export const VIEW_TYPE_SCROLL = "tagfolder-view-scroll";
-
-export type ScrollViewFile = {
-	path: string;
-	title?: string;
-	content?: string;
-	renderedHTML?: string;
-}
-export type ScrollViewState = {
-	files: ScrollViewFile[],
-	title: string,
-	tagPath: string,
-}
-
 export const tagDispDict: { [key: string]: string } = {
 	_VIRTUAL_TAG_CANVAS: "📋 Canvas",
 };
