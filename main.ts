@@ -918,17 +918,17 @@ export default class TagFolderPlugin extends Plugin {
 			await this.loadData()
 		);
 		await this.loadTagInfo();
-		tagFolderSetting.set(this.settings);
+		tagFolderSetting.set({ ...this.settings });
 		this.compareItems = getCompareMethodItems(this.settings);
 		// this.compareTags = getCompareMethodTags(this.settings);
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
-		await this.saveTagInfo();
-		tagFolderSetting.set(this.settings);
+		tagFolderSetting.set({ ...this.settings });
 		this.compareItems = getCompareMethodItems(this.settings);
 		void this.refreshAllViewItems(); // (Do not wait for it)
+		await this.saveData(this.settings);
+		await this.saveTagInfo();
 		// this.compareTags = getCompareMethodTags(this.settings);
 	}
 

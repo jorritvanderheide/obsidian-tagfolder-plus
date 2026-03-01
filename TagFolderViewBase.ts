@@ -175,6 +175,7 @@ export abstract class TagFolderViewBase extends ItemView {
 				);
 			}
 			if (targetTag) {
+				if (this.plugin.settings.useTagInfo) {
 				const pinnedTag = targetTag;
 				const isPinned = this.plugin.settings.pinnedFolders.contains(pinnedTag);
 				if (isPinned) {
@@ -195,6 +196,7 @@ export abstract class TagFolderViewBase extends ItemView {
 								await this.plugin.saveSettings();
 							})
 					);
+				}
 				}
 				const iconTag = targetTag;
 				const currentMark = this.plugin.tagInfo?.[iconTag]?.mark ?? "";
