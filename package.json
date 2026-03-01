@@ -13,7 +13,7 @@
 		"check": "npm run lint && npm run svelte-check && npm run tsc-check"
 	},
 	"keywords": [],
-	"author": "vorotamoroz",
+	"author": "Jorrit van der Heide",
 	"license": "MIT",
 	"devDependencies": {
 		"@eslint/compat": "^1.2.8",

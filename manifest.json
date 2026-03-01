@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.12.0",
 	"description": "Show nested tags as a strict folder hierarchy",
-	"author": "vorotamoroz",
-	"authorUrl": "https://github.com/vrtmrz",
+	"author": "Jorrit van der Heide",
+	"authorUrl": "https://github.com/jorritvanderheide",
 	"isDesktopOnly": false
 }
