@@ -61,6 +61,7 @@ export interface TagFolderSettings {
 	useTagInfo: boolean;
 	tagInfo: string;
 	mergeRedundantCombination: boolean;
+	namespacedTagGuard: boolean;
 	useFrontmatterTagsForNewNotes: boolean,
 	doNotSimplifyTags: boolean;
 	overrideTagClicking: boolean;
@@ -92,6 +93,7 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	useTagInfo: false,
 	tagInfo: ".pininfo.md",
 	mergeRedundantCombination: false,
+	namespacedTagGuard: true,
 	useFrontmatterTagsForNewNotes: false,
 	doNotSimplifyTags: false,
 	overrideTagClicking: false,

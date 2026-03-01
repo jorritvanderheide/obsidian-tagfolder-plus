@@ -1360,6 +1360,19 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
+			.setName("Namespace-scoped sub-folders")
+			.setDesc(
+				"When inside a tag folder, only show sub-folders from the same root namespace (e.g. inside source/, never show area/*)."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.namespacedTagGuard)
+					.onChange(async (value) => {
+						this.plugin.settings.namespacedTagGuard = value;
+						await this.plugin.saveSettings();
+					});
+			});
+		new Setting(containerEl)
 			.setName("Do not simplify empty folders")
 			.setDesc(
 				"Keep empty folders, even if they can be simplified."

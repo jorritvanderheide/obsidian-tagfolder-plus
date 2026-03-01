@@ -320,7 +320,7 @@
             }
             // Namespace guard: inside a non-root folder, only show tags from the
             // same root namespace (e.g., inside source/, never show area/*).
-            if (!isRoot && trail.length > 0) {
+            if (!isRoot && trail.length > 0 && _setting.namespacedTagGuard) {
                 const rootNS = trail[0].split("/")[0].toLowerCase();
                 if (rootNS) {
                     tagsAll = tagsAll.filter((tag) => {
