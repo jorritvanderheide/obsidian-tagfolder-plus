@@ -22,3 +22,8 @@ data.json
 
 # Test and build files
 .env
+
+# Nix
+.direnv
+.envrc
+result
