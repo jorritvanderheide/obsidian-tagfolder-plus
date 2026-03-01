@@ -1138,8 +1138,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Behavior" });
 		new Setting(containerEl)
-			.setName("Always Open")
-			.setDesc("Place TagFolder on the left pane and activate it at every Obsidian launch")
+			.setName("Open on startup")
+			.setDesc("Automatically open the tag tree in the left sidebar every time Obsidian starts.")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.alwaysOpen)
@@ -1149,9 +1149,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(containerEl)
-			.setName("Use pinning")
+			.setName("Enable folder pinning")
 			.setDesc(
-				"When this feature is enabled, the pin information is saved in the file set in the next configuration."
+				"Persist pin state for tag folders across sessions. Pin data is saved to the file specified below."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -1166,7 +1166,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		const pi = new Setting(containerEl)
-			.setName("Pin information file")
+			.setName("Pin data file")
 			.setDisabled(!this.plugin.settings.useTagInfo)
 			.addText((text) => {
 				text
@@ -1181,8 +1181,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 		containerEl.createEl("h2", { text: "Files" });
 		new Setting(containerEl)
-			.setName("Display method")
-			.setDesc("How to show a title of files")
+			.setName("File title format")
+			.setDesc("How file names are displayed in the tag tree.")
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOptions({
@@ -1207,8 +1207,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 			// this.plugin.setRoot(this.plugin.root);
 		};
 		new Setting(containerEl)
-			.setName("Order method")
-			.setDesc("how to order items")
+			.setName("File sort order")
+			.setDesc("Sort order for files within each tag folder.")
 			.addDropdown((dd) => {
 				dd.addOptions(OrderKeyItem)
 					.setValue(this.plugin.settings.sortType.split("_")[0])
@@ -1220,8 +1220,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 					.onChange((order) => setOrderMethod(undefined, order));
 			});
 		new Setting(containerEl)
-			.setName("Prioritize items which are not contained in sub-folder")
-			.setDesc("If this has been enabled, the items which have no more extra tags are first.")
+			.setName("Exact matches first")
+			.setDesc("Show files that belong only to this tag (not any sub-tag) at the top of the list.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.sortExactFirst)
@@ -1231,9 +1231,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
-			.setName("Use title")
+			.setName("Show display name")
 			.setDesc(
-				"Use value in the frontmatter or first level one heading for `NAME`."
+				"Show the note’s title from frontmatter or the first H1 heading instead of the filename."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -1245,7 +1245,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		const fpath = new Setting(containerEl)
-			.setName("Frontmatter path")
+			.setName("Title frontmatter key")
 			.setDisabled(!this.plugin.settings.useTitle)
 			.addText((text) => {
 				text
@@ -1268,8 +1268,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 			// this.plugin.setRoot(this.plugin.root);
 		};
 		new Setting(containerEl)
-			.setName("Order method")
-			.setDesc("how to order tags")
+			.setName("Tag sort order")
+			.setDesc("Sort order for tag folders.")
 			.addDropdown((dd) => {
 				dd.addOptions(OrderKeyTag)
 					.setValue(this.plugin.settings.sortTypeTag.split("_")[0])
@@ -1283,8 +1283,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 
 
 		new Setting(containerEl)
-			.setName("Store tags in frontmatter for new notes")
-			.setDesc("Otherwise, tags are stored with #hashtags at the top of the note")
+			.setName("Use frontmatter tags for new notes")
+			.setDesc("Store tags as frontmatter YAML when creating a new note from a tag folder, instead of inline #hashtags.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.useFrontmatterTagsForNewNotes)
@@ -1296,7 +1296,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Actions" });
 		new Setting(containerEl)
-			.setName("Search tags inside TagFolder when clicking tags")
+			.setName("Intercept tag clicks")
+			.setDesc("When clicking a tag anywhere in Obsidian, navigate to it in the tag tree instead of opening the default tag search.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.overrideTagClicking)
@@ -1306,7 +1307,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
-			.setName("List files in a separated pane")
+			.setName("Open file list in a separate pane")
+			.setDesc("Show the list of files for a tag folder in a dedicated panel instead of inline.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.useMultiPaneList)
@@ -1316,8 +1318,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
-			.setName("Show list in")
-			.setDesc("This option applies to the newly opened list")
+			.setName("New list pane location")
+			.setDesc("Where to open the file list pane. Applies to newly opened panes only.")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOptions(enumShowListIn)
@@ -1330,8 +1332,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 		containerEl.createEl("h2", { text: "Arrangements" });
 
 		new Setting(containerEl)
-			.setName("Hide Items")
-			.setDesc("Hide items on the landing or nested tags")
+			.setName("Hide files")
+			.setDesc("Control which files are hidden inside intermediate (non-leaf) tag folders.")
 			.addDropdown((dd) => {
 				dd.addOptions(HideItemsType)
 					.setValue(this.plugin.settings.hideItems)
@@ -1347,9 +1349,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
-			.setName("Merge redundant combinations")
+			.setName("Collapse redundant tag orderings")
 			.setDesc(
-				"When this feature is enabled, a/b and b/a are merged into a/b if there is no intermediates."
+				"Merge tag folders that differ only by order (e.g. area/project and project/area become a single folder)."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -1360,9 +1362,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
-			.setName("Namespace-scoped sub-folders")
+			.setName("Isolate sub-folders by namespace")
 			.setDesc(
-				"When inside a tag folder, only show sub-folders from the same root namespace (e.g. inside source/, never show area/*)."
+				"Only show sub-folders that belong to the same root namespace as the current folder. For example, inside source/, folders from area/ or project/ will not appear."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -1373,9 +1375,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 		new Setting(containerEl)
-			.setName("Do not simplify empty folders")
+			.setName("Keep intermediate empty folders")
 			.setDesc(
-				"Keep empty folders, even if they can be simplified."
+				"Prevent empty parent tag folders from being collapsed when all their files live in sub-folders."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -1387,8 +1389,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Reduce duplicated parents in nested tags")
-			.setDesc("If enabled, #web/css, #web/javascript will merged into web -> css -> javascript")
+			.setName("Merge shared tag prefixes")
+			.setDesc("Collapse sibling tags that share a common parent into a single tree branch (e.g. #web/css and #web/js both appear under web/).")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.reduceNestedParent)
@@ -1399,7 +1401,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Keep untagged items on the root")
+			.setName("Show untagged files at root")
+			.setDesc("Display notes with no tags at the top level of the tag tree.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.expandUntaggedToRoot)
@@ -1411,8 +1414,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Filters" });
 		new Setting(containerEl)
-			.setName("Target Folders")
-			.setDesc("If configured, the plugin will only target files in it.")
+			.setName("Scan only these folders")
+			.setDesc("Comma-separated list of vault folders. Only files inside these folders will appear in the tag tree. Leave empty to scan the whole vault.")
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.targetFolders)
@@ -1423,8 +1426,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(containerEl)
-			.setName("Ignore Folders")
-			.setDesc("Ignore documents in specific folders.")
+			.setName("Exclude folders")
+			.setDesc("Comma-separated list of folders to exclude from the tag tree (e.g. templates, archive).")
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.ignoreFolders)
@@ -1435,9 +1438,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(containerEl)
-			.setName("Ignore note Tag")
+			.setName("Exclude notes with tag")
 			.setDesc(
-				"If the note has the tag listed below, the note would be treated as there was not."
+				"Notes that have any of these tags are hidden from the tag tree entirely. Comma-separated."
 			)
 			.addTextArea((text) =>
 				text
@@ -1449,8 +1452,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(containerEl)
-			.setName("Ignore Tag")
-			.setDesc("Tags in the list would be treated as there were not.")
+			.setName("Hide tags")
+			.setDesc("These tags and all their sub-tags will be hidden from the tag tree. Comma-separated.")
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.ignoreTags)
@@ -1462,7 +1465,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 			);
 		new Setting(containerEl)
 			.setName("Archive tags")
-			.setDesc("If configured, notes with these tags will be moved under the tag.")
+			.setDesc("Notes with these tags are grouped under an archive folder at the root and hidden from other folders. Comma-separated.")
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.archiveTags)
@@ -1476,9 +1479,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 		containerEl.createEl("h2", { text: "Misc" });
 
 		new Setting(containerEl)
-			.setName("Tag scanning delay")
+			.setName("Metadata scan delay (ms)")
 			.setDesc(
-				"Sets the delay for reflecting metadata changes to the tag tree. (Plugin reload is required.)"
+				"Milliseconds to wait after a file change before refreshing the tag tree. Increase if the tree flickers during edits. Requires plugin reload."
 			)
 			.addText((text) => {
 				text = text
@@ -1496,8 +1499,8 @@ class TagFolderSettingTab extends PluginSettingTab {
 				return text;
 			});
 		new Setting(containerEl)
-			.setName("Disable dragging tags")
-			.setDesc("The `Dragging tags` is using internal APIs. If something happens, please disable this once and try again.")
+			.setName("Disable tag drag-and-drop")
+			.setDesc("Turn off drag-and-drop reordering of tags. Enable this if you experience issues, as the feature uses internal Obsidian APIs.")
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.disableDragging)
@@ -1509,9 +1512,9 @@ class TagFolderSettingTab extends PluginSettingTab {
 		containerEl.createEl("h2", { text: "Utilities" });
 
 		new Setting(containerEl)
-			.setName("Dumping tags for reporting bugs")
+			.setName("Export tags for bug reports")
 			.setDesc(
-				"If you want to open an issue to the GitHub, this information can be useful. and, also if you want to keep secrets about names of tags, you can use `disguised`."
+				"Copy your tag list to the clipboard to include in a GitHub issue. Use ‘Copy disguised tags’ to anonymise tag names before sharing."
 			)
 			.addButton((button) =>
 				button
