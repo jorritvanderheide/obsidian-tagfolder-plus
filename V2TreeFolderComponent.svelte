@@ -15,6 +15,7 @@
         uniqueCaseIntensive,
         type V2FolderItem,
         V2FI_IDX_CHILDREN,
+        V2FI_IDX_TAG,
         trimSlash,
         ancestorToLongestTag,
         ancestorToTags,
@@ -292,15 +293,28 @@
             if (!isRoot || _setting.expandUntaggedToRoot) {
                 tagsAll = tagsAll.filter((e) => e != "_untagged");
             }
-            // Namespace guard: inside a non-root folder, only show tags from the
-            // same root namespace (e.g., inside source/, never show area/*).
-            if (!isRoot && trail.length > 0 && _setting.namespacedTagGuard) {
-                const rootNS = getRootNamespace(trail[0]);
+            // Namespace guard: inside a non-root folder, filter tags by namespace.
+            if (!isRoot) {
+                const rootNS = getRootNamespace(thisName);
                 if (rootNS) {
-                    tagsAll = tagsAll.filter((tag) => {
-                        const lc = tag.toLowerCase();
-                        return lc === rootNS || lc.startsWith(rootNS + "/");
-                    });
+                    if (_setting.namespacedTagGuard) {
+                        // Guard ON: strict isolation — only show same-namespace tags.
+                        tagsAll = tagsAll.filter((tag) => {
+                            const lc = tag.toLowerCase();
+                            return lc === rootNS || lc.startsWith(rootNS + "/");
+                        });
+                    } else {
+                        // Guard OFF: same-namespace tags pass through; cross-namespace
+                        // tags are collapsed to their root prefix (e.g., source/ai → source/).
+                        tagsAll = uniqueCaseIntensive(tagsAll.flatMap((tag) => {
+                            const lc = tag.toLowerCase();
+                            if (lc === rootNS || lc.startsWith(rootNS + "/")) {
+                                return [tag];
+                            }
+                            const otherRoot = getRootNamespace(lc);
+                            return otherRoot ? [otherRoot + "/"] : [];
+                        }));
+                    }
                 }
             }
         return tagsAll;
@@ -347,6 +361,19 @@
         );
     });
 
+    // Cross-namespace tags that sparseIntermediateTags filters out at intermediate dedicated tag
+    // levels (isInDedicatedTag = true). Passed to collectTreeChildren as keepFolderTags so they
+    // still appear as sub-folders on the collapsed leaf node when isSuppressibleLevel = true.
+    const crossNSTags = $derived.by(() => {
+        if (_setting.namespacedTagGuard || isRoot || !isInDedicatedTag) return [] as string[];
+        const rootNS = getRootNamespace(thisName);
+        if (!rootNS) return [] as string[];
+        return passedTagWithoutThis.filter((tag) => {
+            const tagNS = getRootNamespace(tag);
+            return tagNS !== "" && tagNS !== rootNS;
+        });
+    });
+
     const tagsPhaseX1 = $derived(sparseIntermediateTags);
 
     const { filteredTags, isSuppressibleLevel } = $derived.by(() => {
@@ -354,18 +381,25 @@
         let existTags = tagsPhaseX1;
         let existTagsFiltered1 = [] as string[];
         if (!_setting.doNotSimplifyTags) {
-            // If the note has only one item. it can be suppressible.
-            if (_items.length == 1) {
-                existTagsFiltered1 = existTags;
-                isSuppressibleLevel = true;
-            } else {
-                // All tags under this note are the same. it can be suppressible
-                const allChildTags = uniqueCaseIntensive(
-                    _items.map((e) => [...e.tags].sort().join("**")),
-                );
-                if (allChildTags.length == 1) {
-                    isSuppressibleLevel = true;
+            // When guard is OFF, don't suppress if cross-namespace tags are present.
+            // Suppressing would turn navigable cross-namespace sub-folders into chips.
+            const hasCrossNSTags = !_setting.namespacedTagGuard && !isRoot &&
+                existTags.some((tag) => getRootNamespace(tag.replace(/\*/g, "/")) !== getRootNamespace(thisName));
+
+            if (!hasCrossNSTags) {
+                // If the note has only one item. it can be suppressible.
+                if (_items.length == 1) {
                     existTagsFiltered1 = existTags;
+                    isSuppressibleLevel = true;
+                } else {
+                    // All tags under this note are the same. it can be suppressible
+                    const allChildTags = uniqueCaseIntensive(
+                        _items.map((e) => [...e.tags].sort().join("**")),
+                    );
+                    if (allChildTags.length == 1) {
+                        isSuppressibleLevel = true;
+                        existTagsFiltered1 = existTags;
+                    }
                 }
             }
         }
@@ -485,10 +519,22 @@
             (_setting.hideItems == "DEDICATED_INTERMIDIATES" && isInDedicatedTag) ||
             _setting.hideItems == "ALL_EXCEPT_BOTTOM"
         ) {
+            // When cross-namespace sub-folders are shown (guard OFF), only same-namespace
+            // children should push items down. Cross-namespace children (e.g., source/ inside
+            // domain/coding/git) must not prevent items from appearing as leaf items here.
+            let relevantChildren = children;
+            if (!_setting.namespacedTagGuard && !isRoot) {
+                const currentNS = getRootNamespace(thisName);
+                if (currentNS) {
+                    relevantChildren = children.filter(
+                        (c) => getRootNamespace(c[V2FI_IDX_TAG]) === currentNS,
+                    );
+                }
+            }
             return _items.filter(
                 (e) =>
-                    !children
-                        .map((e) => e[V2FI_IDX_CHILDREN])
+                    !relevantChildren
+                        .map((c) => c[V2FI_IDX_CHILDREN])
                         .flat()
                         .find((ee) => e.path == ee.path),
             );
@@ -577,6 +623,7 @@
             expandLimit,
             depth,
             tags,
+            keepFolderTags: crossNSTags,
             trailLower,
             _setting,
             isMainTree,

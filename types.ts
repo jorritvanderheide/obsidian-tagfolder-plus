@@ -57,7 +57,7 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	sortType: "MTIME_DESC",
 	sortTypeTag: "NAME_ASC",
 	expandLimit: 0,
-	hideItems: "ALL_EXCEPT_BOTTOM",
+	hideItems: "DEDICATED_INTERMIDIATES",
 	ignoreFolders: "",
 	targetFolders: "",
 	scanDelay: 250,

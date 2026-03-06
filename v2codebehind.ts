@@ -64,6 +64,7 @@ export async function collectTreeChildren({
 	expandLimit,
 	depth,
 	tags,
+	keepFolderTags,
 	trailLower,
 	_setting,
 	isMainTree,
@@ -77,6 +78,7 @@ export async function collectTreeChildren({
 	expandLimit: number;
 	depth: number;
 	tags: string[];
+	keepFolderTags?: string[];
 	trailLower: string[];
 	_setting: TagFolderSettings;
 	isMainTree: boolean;
@@ -101,6 +103,18 @@ export async function collectTreeChildren({
 		// suppress sub-folders and show that information as extraTags.
 		children = [];
 		suppressLevels = getExtraTags(tags, trailLower);
+		// When guard is OFF, also build sub-folders for cross-namespace tags
+		// so they appear on the collapsed leaf node (e.g., source/ on "domain/coding/git").
+		if (keepFolderTags && keepFolderTags.length > 0) {
+			const extraChildren = await collectChildren(previousTrail, keepFolderTags, _items);
+			const out: V2FolderItem[] = [];
+			const shownPaths = new Set<string>();
+			for (const [tag, tagName, tagDisp, items] of extraChildren) {
+				const list = items.filter((v) => !shownPaths.has(v.path) && (shownPaths.add(v.path), true));
+				if (list.length > 0) out.push([tag, tagName, tagDisp, list]);
+			}
+			children = out.sort(sortFunc);
+		}
 	} else {
 		let wChildren = [] as V2FolderItem[];
 		wChildren = await collectChildren(previousTrail, tags, _items);
