@@ -521,23 +521,16 @@
     );
 
     const tagsDisp = $derived(
-        isSuppressibleLevel && isInDedicatedTag
+        isSuppressibleLevel
             ? [
                   [
                       ...tagNameDisp,
                       ...suppressLevels.flatMap((e) =>
-                          e.split("/").map((e) => renderSpecialTag(e)),
+                          e.split("/").flatMap((part) => ["/", renderSpecialTag(part)]),
                       ),
                   ],
               ]
-            : isSuppressibleLevel
-              ? [
-                    tagNameDisp,
-                    ...suppressLevels.map((e) =>
-                        e.split("/").map((e) => renderSpecialTag(e)),
-                    ),
-                ]
-              : [tagNameDisp],
+            : [tagNameDisp],
     );
 
     const tagsDispHtml = $derived(
@@ -548,7 +541,7 @@
                           `<span class="tagfolder-tag tag-tag tf-tag">${e
                               .map(
                                   (ee) =>
-                                      `<span class="tf-tag-each">${escapeStringToHTML(
+                                      `<span class="tf-tag-each${ee === "/" ? " tf-tag-separator" : ""}">${escapeStringToHTML(
                                           ee,
                                       )}</span>`,
                               )

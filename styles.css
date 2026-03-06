@@ -28,18 +28,20 @@
 	text-transform: capitalize;
 }
 
+.tagfolder-tag.tag-tag span.tf-tag-separator + span.tf-tag-each {
+	text-transform: none;
+}
+
 .tagfolder-tag.tag-tag.tf-tag span.tf-tag-each:first-child:not(:empty):before {
 	content: "";
 	margin-left: 0;
 }
-
 
 .tagfolder-tag.tag-tag span.tf-tag-each::before {
 	content: "";
 	margin-left: 0;
 	margin-right: 0;
 }
-
 
 .tf-taglist {
 	white-space: nowrap;
