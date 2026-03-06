@@ -1,6 +1,6 @@
 {
 	"name": "tag-folder-plus",
-	"version": "1.0.0",
+	"version": "1.0.2",
 	"description": "Show tags as folder",
 	"main": "main.js",
 	"type": "module",

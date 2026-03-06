@@ -1,7 +1,7 @@
 {
 	"id": "tag-folder-plus",
 	"name": "Tag Folder Plus",
-	"version": "1.0.0",
+	"version": "1.0.2",
 	"minAppVersion": "0.12.0",
 	"description": "Show nested tags as a strict folder hierarchy",
 	"author": "Jorrit van der Heide",
