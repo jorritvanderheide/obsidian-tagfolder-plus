@@ -117,11 +117,6 @@ export function compare(x: string, y: string) {
 	return `${x || ""}`.localeCompare(y, undefined, { numeric: true })
 }
 
-
-function lc(str: string) {
-	return str.toLowerCase();
-}
-
 /**
  * returns paths without intermediate paths.
  * i.e.) "test", "test/a" and "test/b/c" should be "test/a" and "test/b/c";
@@ -142,21 +137,6 @@ export function removeIntermediatePath(paths: string[]) {
 	}
 	return passed.reverse();
 }
-
-export function removeIntermediatePathOld(paths: string[]) {
-	const out = [...paths];
-	const pathEntries = paths.sort((a, b) => a.length - b.length);
-	const removeList = [] as string[];
-	for (const el of pathEntries) {
-		const elLower = lc(el);
-		const elCapped = elLower.endsWith("/") ? elLower : (elLower + "/");
-		if (out.some(e => lc(e).startsWith(elCapped) && lc(e) !== elCapped)) {
-			removeList.push(el);
-		}
-	}
-	return out.filter(e => removeList.indexOf(e) == -1)
-}
-
 
 export function escapeStringToHTML(str: string) {
 	if (!str) return "";
@@ -319,84 +299,9 @@ export function parseTagName(thisName: string): [string, string[]] {
 }
 
 
-export function isIntersect<T>(a: T[], b: T[]) {
-	if (a.length == 0 && b.length != 0) return false;
-	if (a.length != 0 && b.length == 0) return false;
-	const allKeys = [...unique(a), ...unique(b)];
-	const dedupeKey = unique(allKeys);
-	return allKeys.length != dedupeKey.length;
-}
-
-export function isValid<T>(obj: T | false): obj is T {
-	return obj !== false;
-}
-
 export function fileCacheToCompare(cache: FileCache | undefined | false) {
 	if (!cache) return "";
 	return ({ l: cache.links, t: cache.tags })
-}
-
-/*
-let showResultTimer: ReturnType<typeof setTimeout>;
-const measured = {} as Record<string, {
-	count: number,
-	spent: number,
-}>;
-const pf = window.performance;
-export function measure(key: string) {
-	const start = pf.now();
-	return function end() {
-		const end = pf.now();
-		const spent = end - start;
-		measured[key] = { count: (measured[key]?.count ?? 0) + 1, spent: (measured[key]?.spent ?? 0) + spent }
-		if (showResultTimer) clearTimeout(showResultTimer);
-		showResultTimer = setTimeout(() => {
-			console.table(Object.fromEntries(Object.entries(measured).map(e => [e[0], { ...e[1], each: e[1].spent / e[1].count }])));
-		}, 500)
-	}
-}
-*/
-
-export function isSameViewItems(a: ViewItem[][], b: ViewItem[][]) {
-	if (a === b) return true;
-	if (a.length != b.length) return false;
-	for (const i in a) {
-		if (a[i].length != b[i].length) {
-			return false;
-		}
-		if (!_isSameViewItem(a[i], b[i])) return false;
-
-	}
-	return true;
-}
-export function _isSameViewItem(a: ViewItem[], b: ViewItem[]) {
-	if (!a || !b) return false;
-	if (a === b) return true;
-	if (a.length != b.length) return false;
-	for (const j in a) {
-		if (a[j] === b[j]) continue;
-		for (const k in a[j]) {
-			if (!isSameObj(a[j][k as keyof ViewItem], b[j][k as keyof ViewItem])) return false;
-		}
-	}
-	return true;
-}
-export function isSameV2FolderItem(a: V2FolderItem[][], b: V2FolderItem[][]) {
-	if (a === b) return true;
-	if (a.length != b.length) return false;
-	for (const i in a) {
-		if (a[i].length != b[i].length) {
-			return false;
-		}
-		if (a[i] === b[i]) return true;
-		for (const j in a[i]) {
-			if (a[i][j][V2FI_IDX_TAG] !== b[i][j][V2FI_IDX_TAG]) return false;
-			if (a[i][j][V2FI_IDX_TAGNAME] !== b[i][j][V2FI_IDX_TAGNAME]) return false;
-			if (!isSameObj(a[i][j][V2FI_IDX_TAGDISP], b[i][j][V2FI_IDX_TAGDISP])) return false;
-			if (!_isSameViewItem(a[i][j][V2FI_IDX_CHILDREN], b[i][j][V2FI_IDX_CHILDREN])) return false;
-		}
-	}
-	return true;
 }
 
 export function isSameObj<T extends string | number | string[]>(a: T, b: typeof a) {

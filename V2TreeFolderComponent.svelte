@@ -21,7 +21,6 @@
         ancestorToTags,
         isSpecialTag,
         unique,
-        _isSameViewItem,
         scheduleOnceIfDuplicated,
         isSameAny,
         getRootNamespace,
@@ -141,12 +140,6 @@
     let children = $state([] as V2FolderItem[]);
     // Sub-folders for display (Used for phased UI update)
     // let childrenDisp = $state([] as V2FolderItem[][]);
-
-    // Items on this level; which had not been contained in sub-trees.
-    // **Be careful**: Please keep the order of this. This should be also already sorted.
-    // let leftOverItems = $state([] as ViewItem[]);
-    // and for display
-    // let leftOverItemsDisp = $state([] as ViewItem[][]);
 
     // Current tag name for display.
     // let tagsDisp = $state([] as string[][]);
@@ -268,12 +261,9 @@
 
     // -->
 
-    // Cached items
-    const _items = $derived(items);
-
     // All tags in this level (Case insensitively unique)
     const tagsAllCI = $derived(
-        uniqueCaseIntensive(_items.flatMap((e) => e.tags)),
+        uniqueCaseIntensive(items.flatMap((e) => e.tags)),
     );
     // And them in lower case
     const tagsAllLower = $derived(tagsAllCI.map((e) => e.toLowerCase()));
@@ -283,13 +273,9 @@
         inMiddleOfTagHierarchy && !tagsAllLower.contains(lastTrailTagLC),
     );
 
-    // Is this tag consisted of dedicated tag and normal tag?
-    // It means there are both of `a/b` and `a`.
-    const isMixedDedicatedTag = $derived(inMiddleOfTagHierarchy);
-
     const displayTagCandidates = $derived.by(() => {
         let tagsAll = [] as string[];
-            tagsAll = uniqueCaseIntensive(_items.flatMap((e) => e.tags));
+            tagsAll = uniqueCaseIntensive(items.flatMap((e) => e.tags));
             if (!isRoot || _setting.expandUntaggedToRoot) {
                 tagsAll = tagsAll.filter((e) => e != "_untagged");
             }
@@ -347,7 +333,7 @@
         }
     );
     const escapedPreviousTrail = $derived(
-        !isMixedDedicatedTag
+        !inMiddleOfTagHierarchy
             ? previousTrail
             : previousTrail.split("/").join("*"),
     );
@@ -374,11 +360,9 @@
         });
     });
 
-    const tagsPhaseX1 = $derived(sparseIntermediateTags);
-
     const { filteredTags, isSuppressibleLevel } = $derived.by(() => {
         let isSuppressibleLevel = false;
-        let existTags = tagsPhaseX1;
+        let existTags = sparseIntermediateTags;
         let existTagsFiltered1 = [] as string[];
         if (!_setting.doNotSimplifyTags) {
             // When guard is OFF, don't suppress if cross-namespace tags are present.
@@ -388,13 +372,13 @@
 
             if (!hasCrossNSTags) {
                 // If the note has only one item. it can be suppressible.
-                if (_items.length == 1) {
+                if (items.length == 1) {
                     existTagsFiltered1 = existTags;
                     isSuppressibleLevel = true;
                 } else {
                     // All tags under this note are the same. it can be suppressible
                     const allChildTags = uniqueCaseIntensive(
-                        _items.map((e) => [...e.tags].sort().join("**")),
+                        items.map((e) => [...e.tags].sort().join("**")),
                     );
                     if (allChildTags.length == 1) {
                         isSuppressibleLevel = true;
@@ -441,12 +425,7 @@
                 ),
             );
         }
-        if (isMixedDedicatedTag || isInDedicatedTag) {
-            existTagsFiltered1 = existTagsFiltered1.map((e) =>
-                e.replace(escapedPreviousTrail, previousTrail),
-            );
-        }
-        if (isMixedDedicatedTag || isInDedicatedTag) {
+        if (inMiddleOfTagHierarchy) {
             existTagsFiltered1 = existTagsFiltered1.map((e) =>
                 e.replace(escapedPreviousTrail, previousTrail),
             );
@@ -464,18 +443,9 @@
         return { filteredTags: existTagsFiltered3, isSuppressibleLevel };
     });
 
-    const { tags, leftOverItemsSrc } = $derived.by(() => {
+    const tags = $derived.by(() => {
         let tags = [] as string[];
-        const leftOverItemsSrc = [] as ViewItem[];
-        if (!_items) return { tags, leftOverItemsSrc };
-        if (
-            !(
-                isMainTree &&
-                (!expandLimit || (expandLimit && depth < expandLimit))
-            )
-        ) {
-            return { tags, leftOverItemsSrc };
-        }
+        if (!isMainTree || (expandLimit && depth >= expandLimit)) return tags;
 
         if (previousTrail.endsWith("/")) {
             const existTagsFiltered4 = [] as string[];
@@ -494,14 +464,14 @@
         } else {
             tags = uniqueCaseIntensive(removeIntermediatePath(filteredTags));
         }
-        return { tags, leftOverItemsSrc };
+        return tags;
     });
 
     const leftOverItemsUnsorted = $derived.by(() => {
         if (isRoot && isMainTree && !isSuppressibleLevel) {
             // The root, except not is suppressible.
             if (_setting.expandUntaggedToRoot) {
-                return _items.filter(
+                return items.filter(
                     (e) =>
                         e.tags.contains("_untagged"),
                 );
@@ -511,10 +481,10 @@
         }
         if (isRoot && !isMainTree) {
             // Separated List;
-            return _items;
+            return items;
         }
         if (_setting.hideItems == "NONE") {
-            return _items;
+            return items;
         } else if (
             (_setting.hideItems == "DEDICATED_INTERMIDIATES" && isInDedicatedTag) ||
             _setting.hideItems == "ALL_EXCEPT_BOTTOM"
@@ -531,7 +501,7 @@
                     );
                 }
             }
-            return _items.filter(
+            return items.filter(
                 (e) =>
                     !relevantChildren
                         .map((c) => c[V2FI_IDX_CHILDREN])
@@ -539,11 +509,9 @@
                         .find((ee) => e.path == ee.path),
             );
         } else {
-            return _items;
+            return items;
         }
     });
-
-    const leftOverItems = $derived(leftOverItemsUnsorted);
 
 
     // <-- Dirty area
@@ -551,7 +519,7 @@
     // -- Displaying
 
     let isActive = $derived(
-        _items && _items.some((e) => e.path == _currentActiveFilePath),
+        items.some((e) => e.path == _currentActiveFilePath),
     );
 
     $effect(() => {
@@ -593,7 +561,7 @@
                   .join("")
             : "",
     );
-    const leftOverItemsDisp = $derived(splitArrayToBatch(leftOverItems));
+    const leftOverItemsDisp = $derived(splitArrayToBatch(leftOverItemsUnsorted));
     const childrenDisp = $derived(splitArrayToBatch(children));
 
 
@@ -629,7 +597,7 @@
             isMainTree,
             isSuppressibleLevel,
             previousTrail,
-            _items,
+            _items: items,
             isRoot,
             isFolderVisible,
             sortFunc,
@@ -652,7 +620,7 @@
                 evt,
                 [...trail, ...suppressLevels],
                 tagName,
-                _items,
+                items,
             );
         }
     }}
