@@ -1033,18 +1033,6 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Merge shared tag prefixes")
-			.setDesc("Collapse sibling tags that share a common parent into a single tree branch (e.g. #web/css and #web/js both appear under web/).")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.reduceNestedParent)
-					.onChange(async (value) => {
-						this.plugin.settings.reduceNestedParent = value;
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
 			.setName("Show untagged files at root")
 			.setDesc("Display notes with no tags at the top level of the tag tree.")
 			.addToggle((toggle) => {

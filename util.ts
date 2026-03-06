@@ -261,40 +261,17 @@ export function _sorterTagLength(a: string, b: string, invert: boolean) {
 	return (a.length - b.length) * (invert ? -1 : 1);
 }
 
-export function getExtraTags(tags: string[], trail: string[], reduceNestedParent: boolean) {
+export function getExtraTags(tags: string[], trail: string[]) {
 	let tagsLeft = uniqueCaseIntensive(tags);
-	let removeTrailItems = [] as string[];
-
-	if (reduceNestedParent) {
-		removeTrailItems = trail.sort((a, b) => _sorterTagLength(a, b, true));
-	} else {
-		removeTrailItems = removeIntermediatePath(trail);
-	}
+	const removeTrailItems = trail.sort((a, b) => _sorterTagLength(a, b, true));
 
 	for (const t of removeTrailItems) {
-		const inDedicatedTree = t.endsWith("/");
-		const trimLength = inDedicatedTree ? t.length : t.length;
-		// If reduceNestedParent is enabled, we have to remove prefix of all tags.
-		// Note: if the nested parent has been reduced, the prefix will be appeared only once in the trail.
-		// In that case, if `test/a`, `test/b` exist and expanded as test -> a -> b, trails should be `test/` `test/a` `test/b`
-		if (reduceNestedParent) {
-			tagsLeft = tagsLeft.map((e) =>
-				(e + "/").toLowerCase().startsWith(t.toLowerCase())
-					? e.substring(trimLength)
-					: e
-			);
-		} else {
-			// Otherwise, we have to remove the prefix only of the first one.
-			// test -> a test -> b, trails should be `test/` `test/a` `test/` `test/b`
-			const f = tagsLeft.findIndex((e) =>
-				(e + "/")
-					.toLowerCase()
-					.startsWith(t.toLowerCase())
-			);
-			if (f !== -1) {
-				tagsLeft[f] = tagsLeft[f].substring(trimLength);
-			}
-		}
+		const trimLength = t.length;
+		tagsLeft = tagsLeft.map((e) =>
+			(e + "/").toLowerCase().startsWith(t.toLowerCase())
+				? e.substring(trimLength)
+				: e
+		);
 	}
 	return tagsLeft.filter((e) => e.trim() != "");
 }

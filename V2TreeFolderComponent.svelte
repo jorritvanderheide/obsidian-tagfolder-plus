@@ -374,10 +374,7 @@
 
             // At least, this tag name should be trimmed.
             const removeItems = [thisNameLC];
-            if (_setting.reduceNestedParent) {
-                // If reduceNestedParent is enabled, passed trails also should be trimmed.
-                removeItems.push(...trailLower);
-            }
+            removeItems.push(...trailLower);
             const tagsOnNextLevel = uniqueCaseIntensive(
                 existTags.map((e) => {
                     const idx = e.indexOf("/");

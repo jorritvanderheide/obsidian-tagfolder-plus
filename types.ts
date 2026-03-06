@@ -39,7 +39,6 @@ export interface TagFolderSettings {
 	hideItems: HIDE_ITEMS_TYPE;
 	scanDelay: number;
 	useTitle: boolean;
-	reduceNestedParent: boolean;
 	frontmatterKey: string;
 	namespacedTagGuard: boolean;
 	useFrontmatterTagsForNewNotes: boolean,
@@ -67,7 +66,6 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	targetFolders: "",
 	scanDelay: 250,
 	useTitle: true,
-	reduceNestedParent: true,
 	frontmatterKey: "title",
 	namespacedTagGuard: true,
 	useFrontmatterTagsForNewNotes: false,

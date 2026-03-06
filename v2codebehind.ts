@@ -110,7 +110,7 @@ export async function collectTreeChildren({
 		// If expand limit had been configured and we have reached it,
 		// suppress sub-folders and show that information as extraTags.
 		children = [];
-		suppressLevels = getExtraTags(tags, trailLower, _setting.reduceNestedParent);
+		suppressLevels = getExtraTags(tags, trailLower);
 	} else if (!isMainTree) {
 		// If not in main tree, suppress sub-folders.
 		children = [];
@@ -118,7 +118,7 @@ export async function collectTreeChildren({
 		// If we determined it was a suppressible,
 		// suppress sub-folders and show that information as extraTags.
 		children = [];
-		suppressLevels = getExtraTags(tags, trailLower, _setting.reduceNestedParent);
+		suppressLevels = getExtraTags(tags, trailLower);
 	} else {
 		let wChildren = [] as V2FolderItem[];
 		wChildren = await collectChildren(previousTrail, tags, _items);
