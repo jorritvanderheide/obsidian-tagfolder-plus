@@ -12,14 +12,11 @@ import {
 	waitForRequestAnimationFrame,
 	getRootNamespace,
 	matchesArchiveTag,
+	delay,
+	nextTick,
+	parseTagList,
 } from "./util";
 
-function delay() {
-	return new Promise<void>((res) => setTimeout(() => res(), 5));
-}
-function nextTick() {
-	return new Promise<void>((res) => setTimeout(() => res(), 0));
-}
 const delays = [nextTick, delay, nextTick, waitForRequestAnimationFrame];
 let delayIdx = 0;
 export async function collectChildren(
@@ -135,7 +132,7 @@ export async function collectTreeChildren({
 		if (isMainTree && isRoot) {
 			// Remove all items which have been already archived except is on the root.
 
-			const archiveTags = _setting.archiveTags.toLowerCase().replace(/[\n ]/g, "").split(",");
+			const archiveTags = parseTagList(_setting.archiveTags);
 			const itemMatchesAnyArchive = (item: ViewItem) =>
 				item.tags.some(tag => archiveTags.some(a => a !== "" && matchesArchiveTag(tag.toLowerCase(), a)));
 			wChildren = wChildren

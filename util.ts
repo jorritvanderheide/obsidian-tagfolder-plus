@@ -13,6 +13,14 @@ export function getRootNamespace(tag: string): string {
 	return tag.split("/")[0].toLowerCase().replace(/\/$/, "");
 }
 
+export function belongsToNamespace(tag: string, ns: string): boolean {
+	return tag === ns || tag.startsWith(ns + "/");
+}
+
+export function parseTagList(str: string): string[] {
+	return str.toLowerCase().replace(/[\n ]/g, "").split(",").filter(e => e !== "");
+}
+
 export function trimSlash(src: string, keepStart = false, keepEnd = false) {
 	const st = keepStart ? 0 : (src[0] == "/" ? 1 : 0);
 	const end = keepEnd ? undefined : (src.endsWith("/") ? -1 : undefined);
@@ -61,10 +69,10 @@ const queues = [] as (() => void)[];
 export function waitForRequestAnimationFrame() {
 	return new Promise<void>(res => requestAnimationFrame(() => res()));
 }
-function delay(num?: number) {
+export function delay(num?: number) {
 	return new Promise<void>(res => setTimeout(() => res(), num || 5));
 }
-function nextTick() {
+export function nextTick() {
 	return new Promise<void>(res => setTimeout(() => res(), 0));
 }
 
@@ -313,7 +321,7 @@ export function parseTagName(thisName: string): [string, string[]] {
 
 export function fileCacheToCompare(cache: FileCache | undefined | false) {
 	if (!cache) return "";
-	return ({ l: cache.links, t: cache.tags })
+	return ({ t: cache.tags })
 }
 
 export function isSameObj<T extends string | number | string[]>(a: T, b: typeof a) {

@@ -208,30 +208,6 @@ export abstract class TagFolderViewBase extends ItemView {
 						}
 					})
 			);
-		} else if (!isTagTree && targetTag) {
-			const path = targetTag;
-			const file = this.app.vault.getAbstractFileByPath(path);
-			// Trigger
-			this.app.workspace.trigger("file-menu", menu, file, "file-explorer");
-			menu.addSeparator();
-			menu.addItem((item) =>
-				item
-					.setTitle(`Open in new tab`)
-					.setSection("open")
-					.setIcon("lucide-file-plus")
-					.onClick(async () => {
-						await this.app.workspace.openLinkText(path, path, "tab");
-					})
-			);
-			menu.addItem((item) =>
-				item
-					.setTitle(`Open to the right`)
-					.setSection("open")
-					.setIcon("lucide-separator-vertical")
-					.onClick(async () => {
-						await this.app.workspace.openLinkText(path, path, "split");
-					})
-			);
 		}
 		if ("screenX" in evt) {
 			menu.showAtPosition({ x: evt.pageX, y: evt.pageY });

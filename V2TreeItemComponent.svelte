@@ -1,10 +1,8 @@
 <script lang="ts">
     import OnDemandRender from "OnDemandRender.svelte";
 
-    import type { TREE_TYPE, TagFolderSettings, ViewItem } from "types";
+    import type { TagFolderSettings, ViewItem } from "types";
     import { currentFile, pluginInstance, tagFolderSetting } from "./store";
-
-    const viewType: TREE_TYPE = "tags";
 
     interface Props {
         // Display props

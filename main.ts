@@ -3,19 +3,12 @@
 import {
 	App,
 	debounce,
-	Editor,
 	getAllTags,
-	MarkdownView,
-	normalizePath,
-	parseYaml,
-	Platform,
 	Plugin,
 	PluginSettingTab,
 	Setting,
 	TFile,
-	WorkspaceLeaf,
 	TAbstractFile,
-	type MarkdownFileInfo,
 } from "obsidian";
 
 import {
@@ -33,7 +26,6 @@ import {
 	compare,
 	doEvents,
 	fileCacheToCompare,
-	renderSpecialTag,
 	unique,
 	ancestorToLongestTag,
 	ancestorToTags,
@@ -41,8 +33,8 @@ import {
 	removeIntermediatePath,
 	trimTrailingSlash,
 	isSpecialTag,
-	trimPrefix,
 	matchesArchiveTag,
+	parseTagList,
 } from "./util";
 import { TagFolderView } from "./TagFolderView";
 
@@ -205,7 +197,7 @@ export default class TagFolderPlugin extends Plugin {
 		pluginInstance.set(this);
 		this.registerView(
 			VIEW_TYPE_TAGFOLDER,
-			(leaf) => new TagFolderView(leaf, this, "tags")
+			(leaf) => new TagFolderView(leaf, this)
 		);
 		this.app.workspace.onLayoutReady(async () => {
 			this.loadFileInfo();
@@ -230,17 +222,9 @@ export default class TagFolderPlugin extends Plugin {
 		});
 		this.metadataCacheChanged = this.metadataCacheChanged.bind(this);
 		this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
-		this.metadataCacheResolve = this.metadataCacheResolve.bind(this);
-		this.metadataCacheResolved = this.metadataCacheResolved.bind(this);
 		this.loadFileInfo = this.loadFileInfo.bind(this);
 		this.registerEvent(
 			this.app.metadataCache.on("changed", this.metadataCacheChanged)
-		);
-		this.registerEvent(
-			this.app.metadataCache.on("resolve", this.metadataCacheResolve)
-		);
-		this.registerEvent(
-			this.app.metadataCache.on("resolved", this.metadataCacheResolved)
 		);
 
 		this.refreshAllTree = this.refreshAllTree.bind(this);
@@ -424,13 +408,6 @@ export default class TagFolderPlugin extends Plugin {
 	metadataCacheChanged(file: TFile) {
 		void this.loadFileInfoAsync(file);
 	}
-	metadataCacheResolve(_file: TFile) {
-		// no-op: link tree removed
-	}
-	metadataCacheResolved() {
-		// no-op: link tree removed
-	}
-
 	refreshTree(file: TAbstractFile, oldName?: string) {
 		if (oldName) {
 			this.refreshAllTree();
@@ -450,16 +427,11 @@ export default class TagFolderPlugin extends Plugin {
 	oldFileCache = "";
 
 
-	getFileCacheLinks(_file: TFile): string[] {
-		return [];
-	}
 	getFileCacheData(file: TFile): FileCache | false {
 		const metadata = this.app.metadataCache.getFileCache(file);
 		if (!metadata) return false;
-		const links = this.getFileCacheLinks(file);
 		return {
 			file: file,
-			links: links,
 			tags: getAllTags(metadata) || [],
 		};
 	}
@@ -473,7 +445,6 @@ export default class TagFolderPlugin extends Plugin {
 		const fileCacheDump = JSON.stringify(
 			this.fileCaches.map((e) => ({
 				path: e.file.path,
-				links: e.links,
 				tags: e.tags,
 			}))
 		);
@@ -523,16 +494,8 @@ export default class TagFolderPlugin extends Plugin {
 
 	async getItemsList(): Promise<ViewItem[]> {
 		const items: ViewItem[] = [];
-		const ignoreDocTags = this.settings.ignoreDocTags
-			.toLowerCase()
-			.replace(/[\n ]/g, "")
-			.split(",");
-		const ignoreTags = this.settings.ignoreTags
-			.toLowerCase()
-			.replace(/[\n ]/g, "")
-			.split(",")
-			.map((e) => e.replace(/\/+$/, ""));
-
+		const ignoreDocTags = parseTagList(this.settings.ignoreDocTags);
+		const ignoreTags = parseTagList(this.settings.ignoreTags).map((e) => e.replace(/\/+$/, ""));
 		const ignoreFolders = this.settings.ignoreFolders
 			.toLowerCase()
 			.replace(/\n/g, "")
@@ -546,17 +509,12 @@ export default class TagFolderPlugin extends Plugin {
 			.map((e) => e.trim())
 			.filter((e) => !!e);
 
-
 		const searchItems = this.searchString
 			.toLowerCase()
 			.split("|")
 			.map((ee) => ee.split(" ").map((e) => e.trim()));
 
-
-		const archiveTags = this.settings.archiveTags
-			.toLowerCase()
-			.replace(/[\n ]/g, "")
-			.split(",");
+		const archiveTags = parseTagList(this.settings.archiveTags);
 		for (const fileCache of this.fileCaches) {
 			if (
 				targetFolders.length > 0 &&
@@ -653,10 +611,8 @@ export default class TagFolderPlugin extends Plugin {
 			}
 			items.push({
 				tags: allTags,
-				extraTags: [],
 				path: fileCache.file.path,
 				displayName: this.getDisplayName(fileCache.file),
-				ancestors: [],
 				mtime: fileCache.file.stat.mtime,
 				ctime: fileCache.file.stat.ctime,
 				filename: fileCache.file.basename,
@@ -669,9 +625,7 @@ export default class TagFolderPlugin extends Plugin {
 	lastSearchString = "";
 
 	loadFileInfo(diff?: TFile) {
-		void this.loadFileInfoAsync(diff).then(e => {
-			/* NO op*/
-		});
+		void this.loadFileInfoAsync(diff);
 	}
 
 	processingFileInfo = false;
@@ -752,7 +706,7 @@ export default class TagFolderPlugin extends Plugin {
 	}
 
 	onunload() {
-		pluginInstance.set(undefined!);
+		pluginInstance.set(undefined);
 	}
 
 

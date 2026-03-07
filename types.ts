@@ -2,14 +2,9 @@ import type { TFile } from "obsidian";
 import { type DISPLAY_METHOD, type HIDE_ITEMS_TYPE } from "./main";
 
 export interface ViewItem {
-	/**
-	 * Historical reason, `tags` consists the list of either tag or link.
-	 */
 	tags: string[];
-	extraTags: string[];
 	path: string;
 	displayName: string;
-	ancestors: string[];
 	mtime: number;
 	ctime: number;
 	filename: string;
@@ -80,7 +75,6 @@ export const tagDispDict: { [key: string]: string } = {
 };
 
 export const VIEW_TYPE_TAGFOLDER = "tagfolder-view";
-export type TREE_TYPE = "tags";
 
 export const OrderKeyTag: Record<string, string> = {
 	NAME: "Tag name",
@@ -101,6 +95,5 @@ export const OrderKeyItem: Record<string, string> = {
 
 export type FileCache = {
 	file: TFile;
-	links: string[];
 	tags: string[];
 }

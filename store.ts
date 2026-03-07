@@ -16,4 +16,4 @@ export const v2expandedTags = writable(new Set<string>());
 
 export const performHide = writable(0);
 
-export const pluginInstance = writable<TagFolderPlugin>(undefined);
+export const pluginInstance = writable<TagFolderPlugin | undefined>(undefined);

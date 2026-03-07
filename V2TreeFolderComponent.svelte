@@ -23,6 +23,8 @@
         scheduleOnceIfDuplicated,
         isSameAny,
         getRootNamespace,
+        belongsToNamespace,
+        parseTagList,
         matchesArchiveTag,
     } from "./util";
     import {
@@ -121,21 +123,10 @@
         }
     }
 
-    // All tags that this node have.
-    // let tags = $state([] as string[]);
-
-    // Dedicated tag -- Nested tags -- handling
-    // let isInDedicatedTag = $state(false);
-    // let previousTrail = $state("");
-
-    // To suppress empty folders
-    // let isSuppressibleLevel = $state(false);
     let suppressLevels = $state([] as string[]);
 
     // Sub-folders
     let children = $state([] as V2FolderItem[]);
-    // Sub-folders for display (Used for phased UI update)
-    // let childrenDisp = $state([] as V2FolderItem[][]);
 
     // Current tag name for display.
     // let tagsDisp = $state([] as string[][]);
@@ -307,10 +298,7 @@
                 if (rootNS) {
                     if (_setting.namespacedTagGuard) {
                         // Guard ON: strict isolation — only show same-namespace tags.
-                        tagsAll = tagsAll.filter((tag) => {
-                            const lc = tag.toLowerCase();
-                            return lc === rootNS || lc.startsWith(rootNS + "/");
-                        });
+                        tagsAll = tagsAll.filter((tag) => belongsToNamespace(tag.toLowerCase(), rootNS));
                     } else {
                         // Guard OFF: same-namespace tags pass through; cross-namespace
                         // tags appear only if we haven't exceeded filterFolderDepth hops.
@@ -319,27 +307,20 @@
                         if (allowCrossNS) {
                             tagsAll = uniqueCaseIntensive(tagsAll.flatMap((tag) => {
                                 const lc = tag.toLowerCase();
-                                if (lc === rootNS || lc.startsWith(rootNS + "/")) {
-                                    return [tag];
-                                }
+                                if (belongsToNamespace(lc, rootNS)) return [tag];
                                 const otherRoot = getRootNamespace(lc);
                                 return otherRoot ? [otherRoot + "/"] : [];
                             }));
                             // Remove cross-NS tags that provide no navigation value.
-                            // A namespace is useful when clicking it either narrows the
-                            // item count, or all items have it but with different subtags
-                            // (so sub-navigation is meaningful). Suppress only when every
-                            // item shares the exact same specific subtag (zero benefit).
                             tagsAll = tagsAll.filter((tag) => {
                                 const lc = tag.toLowerCase();
-                                if (lc === rootNS || lc.startsWith(rootNS + "/")) return true;
+                                if (belongsToNamespace(lc, rootNS)) return true;
                                 const ns = getRootNamespace(lc);
                                 if (!ns) return false;
                                 const itemsWithNS = items.filter((item) =>
                                     item.tags.some((t) => getRootNamespace(t.toLowerCase()) === ns),
                                 );
-                                if (itemsWithNS.length < items.length) return itemsWithNS.length > 1; // narrows set, but only if >1 file shown
-                                // All items have this NS — only keep if subtags differ
+                                if (itemsWithNS.length < items.length) return itemsWithNS.length > 1;
                                 const distinctSubtags = new Set(
                                     items.flatMap((item) =>
                                         item.tags
@@ -349,39 +330,26 @@
                                 ).size;
                                 return distinctSubtags > 1;
                             });
-                            // Only show cross-NS tags if there are at least 2 distinct
-                            // namespaces — a single cross-NS namespace offers no filtering value.
-                            // Exclude namespaces that are hidden (ignoreTags) or archived (archiveTags).
-                            const ignoreNS = _setting.ignoreTags
-                                .toLowerCase().replace(/[\n ]/g, "").split(",")
-                                .map((e) => getRootNamespace(e)).filter((e) => e !== "");
-                            const archiveNS = _setting.archiveTags
-                                .toLowerCase().replace(/[\n ]/g, "").split(",")
-                                .filter((e) => e !== "")
-                                .map((e) => getRootNamespace(e));
+                            // Only show cross-NS tags if ≥1 distinct useful namespace exists.
+                            const ignoreNS = parseTagList(_setting.ignoreTags).map(getRootNamespace).filter(e => e !== "");
+                            const archiveNS = parseTagList(_setting.archiveTags).map(getRootNamespace).filter(e => e !== "");
                             const crossNSCount = new Set(
                                 tagsAll
-                                    .filter((t) => !t.toLowerCase().startsWith(rootNS))
+                                    .filter((t) => !belongsToNamespace(t.toLowerCase(), rootNS))
                                     .map((t) => getRootNamespace(t.toLowerCase()))
                                     .filter((ns) => {
                                         if (ns === "") return false;
-                                        if (ignoreNS.some((ig) => ns === ig || ns.startsWith(ig + "/"))) return false;
+                                        if (ignoreNS.some((ig) => belongsToNamespace(ns, ig))) return false;
                                         if (archiveNS.some((ar) => ns === ar || matchesArchiveTag(ns, ar))) return false;
                                         return true;
                                     }),
                             ).size;
                             if (crossNSCount < 1 || items.length <= 1) {
-                                tagsAll = tagsAll.filter((tag) => {
-                                    const lc = tag.toLowerCase();
-                                    return lc === rootNS || lc.startsWith(rootNS + "/");
-                                });
+                                tagsAll = tagsAll.filter((tag) => belongsToNamespace(tag.toLowerCase(), rootNS));
                             }
                         } else {
                             // Too deep: suppress cross-namespace tags entirely.
-                            tagsAll = tagsAll.filter((tag) => {
-                                const lc = tag.toLowerCase();
-                                return lc === rootNS || lc.startsWith(rootNS + "/");
-                            });
+                            tagsAll = tagsAll.filter((tag) => belongsToNamespace(tag.toLowerCase(), rootNS));
                         }
                     }
                 }
@@ -584,13 +552,8 @@
                     );
                 }
             }
-            return items.filter(
-                (e) =>
-                    !relevantChildren
-                        .map((c) => c[V2FI_IDX_CHILDREN])
-                        .flat()
-                        .find((ee) => e.path == ee.path),
-            );
+            const childPaths = new Set(relevantChildren.flatMap((c) => c[V2FI_IDX_CHILDREN].map((ee) => ee.path)));
+            return items.filter((e) => !childPaths.has(e.path));
         } else {
             return items;
         }

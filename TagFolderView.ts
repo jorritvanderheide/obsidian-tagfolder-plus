@@ -1,28 +1,22 @@
-import { WorkspaceLeaf, type ViewState } from "obsidian";
+import { WorkspaceLeaf } from "obsidian";
 import TagFolderViewComponent from "./TagFolderViewComponent.svelte";
-import { VIEW_TYPE_TAGFOLDER, type TREE_TYPE } from "./types";
+import { VIEW_TYPE_TAGFOLDER } from "./types";
 import TagFolderPlugin from "./main";
 import { TagFolderViewBase } from "./TagFolderViewBase";
 import { mount, unmount } from "svelte";
 
-export interface TagFolderViewState extends ViewState {
-	treeViewType: TREE_TYPE;
-}
 export class TagFolderView extends TagFolderViewBase {
 	icon = "stacked-levels";
-	treeViewType?: TREE_TYPE;
 
 	getIcon(): string {
 		return "stacked-levels";
 	}
 
-	constructor(leaf: WorkspaceLeaf, plugin: TagFolderPlugin, viewType: TREE_TYPE) {
+	constructor(leaf: WorkspaceLeaf, plugin: TagFolderPlugin) {
 		super(leaf);
 		this.plugin = plugin;
 		this.showMenu = this.showMenu.bind(this);
 		this.showOrder = this.showOrder.bind(this);
-		this.treeViewType = viewType;
-		// this.setState({ viewType: this.viewType, type: this.getViewType() }, {});
 	}
 
 	getViewType() {
