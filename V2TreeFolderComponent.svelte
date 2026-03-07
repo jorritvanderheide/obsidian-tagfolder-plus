@@ -540,6 +540,15 @@
         }
     });
 
+    $effect(() => {
+        if (isFilterFolder) {
+            v2expandedTags.update((set) => {
+                set.delete(trailKey);
+                return set;
+            });
+        }
+    });
+
     const tagsDisp = $derived(
         isSuppressibleLevel
             ? [
