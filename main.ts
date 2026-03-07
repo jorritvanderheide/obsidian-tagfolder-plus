@@ -935,6 +935,17 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 
+		new Setting(containerEl)
+			.setName("Show item count")
+			.setDesc("Display the number of files in each tag folder, shown to the right of the folder name.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.showItemCount)
+					.onChange(async (value) => {
+						this.plugin.settings.showItemCount = value;
+						await this.plugin.saveSettings();
+					});
+			});
 		containerEl.createEl("h2", { text: "Tags" });
 
 		const setOrderMethodTag = async (key?: string, order?: string) => {

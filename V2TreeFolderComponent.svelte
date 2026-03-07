@@ -561,6 +561,7 @@
                   .join("")
             : "",
     );
+    const itemCount = $derived(items.length);
     const leftOverItemsDisp = $derived(splitArrayToBatch(leftOverItemsUnsorted));
     const childrenDisp = $derived(splitArrayToBatch(children));
 
@@ -662,6 +663,11 @@
                     </div>
                 {:else}
                     <div class="tagfolder-titletagname">...</div>
+                {/if}
+                {#if _setting.showItemCount && isFolderVisible}
+                    <div class="tagfolder-quantity itemscount">
+                        <span class="itemscount">{itemCount}</span>
+                    </div>
                 {/if}
             </div>
         </OnDemandRender>

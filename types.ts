@@ -47,6 +47,7 @@ export interface TagFolderSettings {
 	disableDragging: boolean;
 	pinnedFolders: string[];
 	tagIcons: Record<string, string>;
+	showItemCount: boolean;
 }
 
 export const DEFAULT_SETTINGS: TagFolderSettings = {
@@ -72,6 +73,7 @@ export const DEFAULT_SETTINGS: TagFolderSettings = {
 	disableDragging: false,
 	pinnedFolders: [],
 	tagIcons: {},
+	showItemCount: false,
 };
 
 export const tagDispDict: { [key: string]: string } = {
