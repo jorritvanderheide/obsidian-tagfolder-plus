@@ -338,7 +338,7 @@
                                 const itemsWithNS = items.filter((item) =>
                                     item.tags.some((t) => getRootNamespace(t.toLowerCase()) === ns),
                                 );
-                                if (itemsWithNS.length < items.length) return true; // narrows set
+                                if (itemsWithNS.length < items.length) return itemsWithNS.length > 1; // narrows set, but only if >1 file shown
                                 // All items have this NS — only keep if subtags differ
                                 const distinctSubtags = new Set(
                                     items.flatMap((item) =>
