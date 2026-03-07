@@ -152,6 +152,7 @@ export async function collectTreeChildren({
 					archiveTags.some((aTag) =>
 						aTag !== "" && (
 							`${aTag}//`.startsWith(e[V2FI_IDX_TAG].toLowerCase() + "/") ||
+							aTag.split("/").pop() === e[V2FI_IDX_TAG].toLowerCase() ||
 							e[V2FI_IDX_CHILDREN].some(item => item.tags.some(t => matchesArchiveTag(t.toLowerCase(), aTag)))
 						)
 					)

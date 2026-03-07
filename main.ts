@@ -649,7 +649,8 @@ export default class TagFolderPlugin extends Plugin {
 				archiveTags.some(a => a !== "" && matchesArchiveTag(e.toLowerCase(), a))
 			);
 			if (archiveTagsMatched.length > 0) {
-				allTags = archiveTagsMatched;
+				// Hoist to root by stripping namespace: type/inbox → inbox
+				allTags = unique(archiveTagsMatched.map(t => t.split("/").pop()!));
 			}
 			items.push({
 				tags: allTags,
