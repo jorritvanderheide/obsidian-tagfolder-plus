@@ -231,6 +231,9 @@ export default class TagFolderPlugin extends Plugin {
 		this.registerEvent(
 			this.app.metadataCache.on("changed", this.metadataCacheChanged)
 		);
+		this.registerEvent(
+			this.app.metadataCache.on("resolved", () => this.refreshAllTree())
+		);
 
 		this.refreshAllTree = this.refreshAllTree.bind(this);
 		this.refreshTree = this.refreshTree.bind(this);
@@ -649,9 +652,14 @@ export default class TagFolderPlugin extends Plugin {
 	}
 	loadFileQueue = [] as TFile[];
 	loadFileTimer?: ReturnType<typeof setTimeout> = undefined;
+	pendingFullRebuild = false;
 	async loadFileInfos(diffs: TFile[]) {
 		if (this.processingFileInfo) {
-			diffs.forEach(e => void this.loadFileInfoAsync(e));
+			if (diffs.length === 0) {
+				this.pendingFullRebuild = true;
+			} else {
+				diffs.forEach(e => void this.loadFileInfoAsync(e));
+			}
 			return;
 		}
 		try {
@@ -670,6 +678,10 @@ export default class TagFolderPlugin extends Plugin {
 
 		} finally {
 			this.processingFileInfo = false;
+			if (this.pendingFullRebuild) {
+				this.pendingFullRebuild = false;
+				void this.loadFileInfos([]);
+			}
 		}
 	}
 	async applyFileInfoToView() {
