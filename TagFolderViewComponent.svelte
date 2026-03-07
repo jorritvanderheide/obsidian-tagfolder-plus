@@ -85,6 +85,7 @@
 	let closeAllIcon = $state("");
 	let namespaceGuardIcon = $state("");
 	let filterDepthIcon = $state("");
+	let hideIntermediatesIcon = $state("");
 
 	let observer: IntersectionObserver | undefined;
 
@@ -161,6 +162,8 @@
 				namespaceGuardIcon = iconDivEl.innerHTML;
 				setIcon(iconDivEl, "lucide-layers");
 				filterDepthIcon = iconDivEl.innerHTML;
+				setIcon(iconDivEl, "lucide-folder-minus");
+				hideIntermediatesIcon = iconDivEl.innerHTML;
 			}
 			setIcon(iconDivEl, "lucide-chevrons-down-up");
 			closeAllIcon = iconDivEl.innerHTML;
@@ -223,6 +226,10 @@
 
 	async function toggleNamespaceGuard() {
 		await saveSettings({ ..._setting, namespacedTagGuard: !_setting.namespacedTagGuard });
+	}
+
+	async function toggleSimplifyTags() {
+		await saveSettings({ ..._setting, doNotSimplifyTags: !_setting.doNotSimplifyTags });
 	}
 
 	function showFilterDepth(evt: MouseEvent) {
@@ -289,6 +296,17 @@
 				onclick={showFilterDepth}
 			>
 				{@html filterDepthIcon}
+			</div>
+		{/if}
+		{#if isMainTree}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class={`clickable-icon nav-action-button${!_setting.doNotSimplifyTags ? " is-active" : ""}`}
+				aria-label="Compact empty parent folders"
+				onclick={toggleSimplifyTags}
+			>
+				{@html hideIntermediatesIcon}
 			</div>
 		{/if}
 		{#if isMainTree}
