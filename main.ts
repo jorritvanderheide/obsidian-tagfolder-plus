@@ -51,8 +51,8 @@ const HideItemsType: Record<string, string> = {
 };
 
 
-function dotted<T extends Record<string, any>>(object: T, notation: string) {
-	return notation.split('.').reduce((a, b) => (a && (b in a)) ? a[b] : null, object);
+function dotted(object: Record<string, unknown>, notation: string): unknown {
+	return notation.split('.').reduce<unknown>((a, b) => (a != null && typeof a === "object" && b in (a as Record<string, unknown>)) ? (a as Record<string, unknown>)[b] : null, object);
 }
 
 function getCompareMethodItems(settings: TagFolderSettings) {
@@ -154,8 +154,8 @@ export default class TagFolderPlugin extends Plugin {
 		if (!this.settings.useTitle) return file.basename;
 		const metadata = this.app.metadataCache.getCache(file.path);
 		if (metadata?.frontmatter && (this.settings.frontmatterKey)) {
-			const d = dotted(metadata.frontmatter, this.settings.frontmatterKey);
-			if (d) return `${d}`;
+			const d = dotted(metadata.frontmatter as Record<string, unknown>, this.settings.frontmatterKey);
+			if (typeof d === "string" || typeof d === "number" || typeof d === "boolean") return String(d);
 		}
 		if (metadata?.headings) {
 			const h1 = metadata.headings.find((e) => e.level === 1);
@@ -213,33 +213,30 @@ export default class TagFolderPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "open",
-			name: "Show Tag Explorer",
+			name: "Open",
 			callback: () => {
 				void this.activateView();
 			},
 		});
 		this.addCommand({
 			id: "rebuild-tree",
-			name: "Force Rebuild",
+			name: "Force rebuild",
 			callback: () => {
 				this.refreshAllTree();
 			},
 		});
-		this.metadataCacheChanged = this.metadataCacheChanged.bind(this);
-		this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
 		this.registerEvent(
-			this.app.metadataCache.on("changed", this.metadataCacheChanged)
+			this.app.metadataCache.on("changed", (file) => this.metadataCacheChanged(file))
 		);
 		this.registerEvent(
 			this.app.metadataCache.on("resolved", () => this.refreshAllTree())
 		);
 
 		this.refreshAllTree = this.refreshAllTree.bind(this);
-		this.refreshTree = this.refreshTree.bind(this);
-		this.registerEvent(this.app.vault.on("rename", this.refreshTree));
-		this.registerEvent(this.app.vault.on("delete", this.refreshTree));
+		this.registerEvent(this.app.vault.on("rename", (file, oldName) => this.refreshTree(file, oldName)));
+		this.registerEvent(this.app.vault.on("delete", (file) => this.refreshTree(file)));
 		this.registerEvent(
-			this.app.workspace.on("file-open", this.watchWorkspaceOpen)
+			this.app.workspace.on("file-open", (file) => this.watchWorkspaceOpen(file))
 		);
 		this.watchWorkspaceOpen(this.app.workspace.getActiveFile());
 
@@ -794,7 +791,9 @@ export default class TagFolderPlugin extends Plugin {
 			.trim();
 
 		//@ts-ignore — createAndOpenMarkdownFile is an internal Obsidian API
-		const ww = await this.app.fileManager.createAndOpenMarkdownFile() as TFile;
+		const created: unknown = await this.app.fileManager.createAndOpenMarkdownFile();
+		if (!(created instanceof TFile)) return;
+		const ww = created;
 		if (this.settings.useFrontmatterTagsForNewNotes) {
 			await this.app.fileManager.processFrontMatter(ww, (matter) => {
 				matter.tags = matter.tags ?? [];
@@ -826,7 +825,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "Behavior" });
+		new Setting(containerEl).setName("Behavior").setHeading();
 		new Setting(containerEl)
 			.setName("Open on startup")
 			.setDesc("Automatically open the tag tree in the left sidebar every time Obsidian starts.")
@@ -838,7 +837,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
-		containerEl.createEl("h2", { text: "Files" });
+		new Setting(containerEl).setName("Files").setHeading();
 		new Setting(containerEl)
 			.setName("File title format")
 			.setDesc("How file names are displayed in the tag tree.")
@@ -881,7 +880,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Show display name")
 			.setDesc(
-				"Show the note’s title from frontmatter or the first H1 heading instead of the filename."
+				"Show the note’s title from frontmatter or the first h1 heading instead of the filename."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -915,7 +914,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
-		containerEl.createEl("h2", { text: "Tags" });
+		new Setting(containerEl).setName("Tags").setHeading();
 
 		const setOrderMethodTag = async (key?: string, order?: string) => {
 			const oldSetting = this.plugin.settings.sortTypeTag.split("_");
@@ -941,7 +940,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 			});
 
 
-		containerEl.createEl("h2", { text: "Actions" });
+		new Setting(containerEl).setName("Actions").setHeading();
 		new Setting(containerEl)
 			.setName("Intercept tag clicks")
 			.setDesc("When clicking a tag anywhere in Obsidian, navigate to it in the tag tree instead of opening the default tag search.")
@@ -953,7 +952,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
-		containerEl.createEl("h2", { text: "Arrangements" });
+		new Setting(containerEl).setName("Arrangements").setHeading();
 
 		new Setting(containerEl)
 			.setName("Hide files")
@@ -1011,14 +1010,14 @@ class TagFolderSettingTab extends PluginSettingTab {
 					});
 			});
 
-		containerEl.createEl("h2", { text: "Filters" });
+		new Setting(containerEl).setName("Filters").setHeading();
 		new Setting(containerEl)
 			.setName("Scan only these folders")
 			.setDesc("Comma-separated list of vault folders. Only files inside these folders will appear in the tag tree. Leave empty to scan the whole vault.")
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.targetFolders)
-					.setPlaceholder("study,documents/summary")
+					.setPlaceholder("Study, documents/summary")
 					.onChange(async (value) => {
 						this.plugin.settings.targetFolders = value;
 						await this.plugin.saveSettings();
@@ -1026,11 +1025,11 @@ class TagFolderSettingTab extends PluginSettingTab {
 			);
 		new Setting(containerEl)
 			.setName("Exclude folders")
-			.setDesc("Comma-separated list of folders to exclude from the tag tree (e.g. templates, archive).")
+			.setDesc("Comma-separated list of folders to exclude from the tag tree, such as templates or archive.")
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.ignoreFolders)
-					.setPlaceholder("template,list/standard_tags")
+					.setPlaceholder("Template, list/standard_tags")
 					.onChange(async (value) => {
 						this.plugin.settings.ignoreFolders = value;
 						await this.plugin.saveSettings();
@@ -1044,7 +1043,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.ignoreDocTags)
-					.setPlaceholder("test,test1,test2")
+					.setPlaceholder("Test, test1, test2")
 					.onChange(async (value) => {
 						this.plugin.settings.ignoreDocTags = value;
 						await this.plugin.saveSettings();
@@ -1056,7 +1055,7 @@ class TagFolderSettingTab extends PluginSettingTab {
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.ignoreTags)
-					.setPlaceholder("test,test1,test2")
+					.setPlaceholder("Test, test1, test2")
 					.onChange(async (value) => {
 						this.plugin.settings.ignoreTags = value;
 						await this.plugin.saveSettings();
@@ -1068,14 +1067,14 @@ class TagFolderSettingTab extends PluginSettingTab {
 			.addTextArea((text) =>
 				text
 					.setValue(this.plugin.settings.archiveTags)
-					.setPlaceholder("archived, discontinued")
+					.setPlaceholder("Archived, discontinued")
 					.onChange(async (value) => {
 						this.plugin.settings.archiveTags = value;
 						await this.plugin.saveSettings();
 					})
 			);
 
-		containerEl.createEl("h2", { text: "Misc" });
+		new Setting(containerEl).setName("Misc").setHeading();
 
 		new Setting(containerEl)
 			.setName("Metadata scan delay (ms)")

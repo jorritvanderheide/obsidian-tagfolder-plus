@@ -2,6 +2,7 @@
 	"extends": "@tsconfig/svelte/tsconfig.json",
     "inlineSourceMap": true,
 	"compilerOptions": {
+		"noEmit": true,
 		"baseUrl": ".",
 		"module": "ESNext",
         "target": "ES2018",

@@ -24,7 +24,7 @@ export class TagFolderView extends TagFolderViewBase {
 	}
 
 	getDisplayText() {
-		return "Tag Explorer";
+		return "Tag explorer";
 	}
 
 	async onOpen() {
@@ -35,8 +35,8 @@ export class TagFolderView extends TagFolderViewBase {
 				openFile: this.plugin.focusFile,
 				hoverPreview: (a: MouseEvent, b: string) => this.plugin.hoverPreview(a, b),
 				vaultName: this.app.vault.getName(),
-				showMenu: this.showMenu,
-				showOrder: this.showOrder,
+				showMenu: this.showMenu.bind(this),
+				showOrder: this.showOrder.bind(this),
 				saveSettings: this.saveSettings.bind(this),
 			},
 		});

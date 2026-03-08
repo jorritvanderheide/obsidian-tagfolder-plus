@@ -40,10 +40,10 @@ export abstract class TagFolderViewBase extends ItemView {
 						for (const direction in OrderDirection) {
 							menu2.addItem((item) => {
 								const newSetting = `${key}_${direction}`;
-								item.setTitle(OrderKeyTag[key] + " " + OrderDirection[direction]).onClick(async () => {
+								item.setTitle(OrderKeyTag[key] + " " + OrderDirection[direction]).onClick(() => {
 									//@ts-ignore — string is a valid sort setting value, TypeScript can't narrow it here
 									this.plugin.settings.sortTypeTag = newSetting;
-									await this.plugin.saveSettings();
+									void this.plugin.saveSettings();
 								});
 								if (newSetting === this.plugin.settings.sortTypeTag) {
 									item.setIcon("checkmark");
@@ -65,10 +65,10 @@ export abstract class TagFolderViewBase extends ItemView {
 						for (const direction in OrderDirection) {
 							menu2.addItem((item) => {
 								const newSetting = `${key}_${direction}`;
-								item.setTitle(OrderKeyItem[key] + " " + OrderDirection[direction]).onClick(async () => {
+								item.setTitle(OrderKeyItem[key] + " " + OrderDirection[direction]).onClick(() => {
 									//@ts-ignore — string is a valid sort setting value, TypeScript can't narrow it here
 									this.plugin.settings.sortType = newSetting;
-									await this.plugin.saveSettings();
+									void this.plugin.saveSettings();
 								});
 								if (newSetting === this.plugin.settings.sortType) {
 									item.setIcon("checkmark");
@@ -160,12 +160,12 @@ export abstract class TagFolderViewBase extends ItemView {
 							.setTitle("Set folder icon")
 							.setIcon("lucide-image-plus")
 							.onClick(() => {
-								new IconPickerModal(this.app, async (iconId) => {
+								new IconPickerModal(this.app, (iconId) => {
 									this.plugin.settings.tagIcons = {
 										...this.plugin.settings.tagIcons,
 										[iconTag]: iconId,
 									};
-									await this.plugin.saveSettings();
+									void this.plugin.saveSettings();
 								}).open();
 							})
 					);
@@ -204,7 +204,7 @@ export abstract class TagFolderViewBase extends ItemView {
 					.setWarning(true)
 					.onClick(async () => {
 						if (file) {
-							await this.app.vault.trash(file, true);
+							await this.app.fileManager.trashFile(file);
 						}
 					})
 			);
