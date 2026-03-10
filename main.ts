@@ -88,7 +88,7 @@ function onElement<T extends HTMLElement | Document>(el: T, event: string, selec
 	//@ts-ignore — Obsidian extends HTMLElement with .on()/.off() for event delegation
 	el.on(event, selector, callback, options)
 	//@ts-ignore
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	// -next-line @typescript-eslint/no-unsafe-return
 	return () => el.off(event, selector, callback, options);
 }
 
@@ -761,16 +761,16 @@ export default class TagFolderPlugin extends Plugin {
 	expandedTagsCache: string[] = [];
 
 	async loadSettings() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		// -next-line @typescript-eslint/no-unsafe-assignment
 		const raw = await this.loadData() ?? {};
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		// -next-line @typescript-eslint/no-unsafe-assignment
 		const { expandedTags, ...rest } = raw;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		// -next-line @typescript-eslint/no-unsafe-assignment
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, rest);
 		if (Array.isArray(expandedTags)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			// -next-line @typescript-eslint/no-unsafe-argument
 			v2expandedTags.set(new Set(expandedTags));
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			// -next-line @typescript-eslint/no-unsafe-assignment
 			this.expandedTagsCache = expandedTags;
 		}
 		tagFolderSetting.set({ ...this.settings });
@@ -799,20 +799,20 @@ export default class TagFolderPlugin extends Plugin {
 			.trim();
 
 		//@ts-ignore — createAndOpenMarkdownFile is an internal Obsidian API
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		// -next-line @typescript-eslint/no-unsafe-call
 		const created: unknown = await this.app.fileManager.createAndOpenMarkdownFile();
 		if (!(created instanceof TFile)) return;
 		const ww = created;
 		if (this.settings.useFrontmatterTagsForNewNotes) {
 			await this.app.fileManager.processFrontMatter(ww, (matter) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				// -next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				matter.tags = matter.tags ?? [];
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				// -next-line @typescript-eslint/no-unsafe-member-access
 				matter.tags = expandedTagsAll
 					.filter(e => !isSpecialTag(e))
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+					// -next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 					.filter(e => matter.tags.indexOf(e) < 0)
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+					// -next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 					.concat(matter.tags);
 			});
 		}

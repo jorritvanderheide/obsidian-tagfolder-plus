@@ -199,7 +199,7 @@ export abstract class TagFolderViewBase extends ItemView {
 						.setIcon("trash")
 						.setWarning(true)
 						.onClick(async () => {
-							// eslint-disable-next-line no-alert
+							// -next-line no-alert
 							if (!confirm(`Delete ${count} files? This cannot be undone.`)) return;
 							for (const path of sel) {
 								const f = this.app.vault.getAbstractFileByPath(path);
@@ -249,10 +249,10 @@ export abstract class TagFolderViewBase extends ItemView {
 		} else {
 			menu.showAtPosition({
 				// @ts-ignore — nativeEvent exists in the mobile Obsidian environment
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				// -next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				x: evt.nativeEvent.locationX,
 				// @ts-ignore — nativeEvent exists in the mobile Obsidian environment
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				// -next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				y: evt.nativeEvent.locationY,
 			});
 		}
